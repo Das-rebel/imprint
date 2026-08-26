@@ -127,25 +127,33 @@ Drift demote steps back exactly one stage. All criteria unit-tested (`tests/test
 
 ---
 
-## 4. A3M Integration Contract
+## 4. Integration Contract (MODEL-AGNOSTIC)
 
-**Inbound (Imprint reads):**
+Imprint is **not OpenAI-only**. It auto-detects and speaks every major LLM API shape,
+both on ingest (collector) and egress (serving endpoint):
+
+| Format | Ingress detection | Egress response |
+|--------|-------------------|-----------------|
+| OpenAI ChatCompletion | `messages: [{role, content}]` | standard `chat.completion` object |
+| Anthropic Messages | top-level `system` + assistant in `messages` | `{type:"message", content:[{type:"text"}]}` |
+| Gemini-style | `contents: [{role, parts:[{text}]}]` | `{candidates:[{content:{parts}}]}` |
+| Raw completion | flat `prompt` field | `{response}` |
+
+Content parts (vision-style arrays) are flattened to text; multimodal passthrough is Phase 4.
+PII redaction runs inside the format adapter — one redaction path for all formats.
+
+**Inbound (Imprint reads):** any of the above as JSONL, plus economics fields
+(`cost_usd`/`usage.total_cost`, `latency_ms`, `cache_hit`) when present.
+
+**Outbound:** Imprint serves as provider `imprint-local` responding in the caller's native
+format, with imprint metadata both as HTTP headers AND in-body:
+- `X-Imprint-Signature: <id>` / `imprint.signature` — which signature handled it
+- `X-Imprint-Version: <hash>` / `imprint.version` — exact skill version served
+- `X-Imprint-Escalate: true` / `imprint.escalate` — low confidence; caller should retry via normal routing
+
+**Config surface (one entry in any router):**
 ```json
-// one JSONL record per request — the only thing Imprint requires
-{"ts": 1756200000000, "prompt": "...", "response": "...", "model": "gpt-4o-mini",
- "provider": "openai", "cost_usd": 0.0031, "latency_ms": 742, "cache_hit": false}
-```
-
-**Outbound (A3M sees):**
-Imprint registers itself as provider `imprint-local` via standard OpenAI-compatible endpoint.
-Extra headers:
-- `X-Imprint-Signature: <id>` — which signature handled it
-- `X-Imprint-Escalate: true` — low confidence; caller should retry via normal routing
-- `X-Imprint-Version: <prompt-hash>` — exact skill version served
-
-**Config surface (one entry in A3M):**
-```json
-{"providers": {"imprint-local": {"endpoint": "http://localhost:8477/v1", "cost_per_1k": 0.0, "priority": {"pinned": 0, "preferred": 1}}}}
+{"providers": {"imprint-local": {"endpoint": "http://localhost:8477/v1", "cost_per_1k": 0.0}}}
 ```
 
 ---

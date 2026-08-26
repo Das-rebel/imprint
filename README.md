@@ -24,6 +24,22 @@ flowchart LR
     E -.->|"Phase 3+ (plateau)"| D["Distiller (QLoRA / LoRAX)"]
 ```
 
+## Model-agnostic
+
+Imprint speaks **every major LLM API shape** — OpenAI ChatCompletion, Anthropic Messages,
+Gemini-style contents, and raw completions — auto-detected on both ingest and serving.
+It normalizes anything into its internal pair schema (with PII redaction) and responds
+in the caller's native format. Works with A3M, LiteLLM, OpenRouter exports, or any gateway.
+
+## CLI
+
+```bash
+python -m imprint collect /path/to/requests.jsonl   # ingest (any format)
+python -m imprint mine                              # cluster + rank by economics
+python -m imprint status                            # signatures + skill ladder
+python -m imprint serve 8477                        # imprint-local endpoint
+```
+
 ## Quickstart (dev)
 
 ```bash

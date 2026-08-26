@@ -1,36 +1,93 @@
-"""Phase 0: cluster collected pairs into candidate task signatures.
+"""Signature Miner: cluster pairs into recurring task patterns, ranked by economics.
 
-Uses cheap embeddings + HDBSCAN-style clustering to find recurring patterns,
-then scores them by volume x avg-cost (the economics-first ranking).
-Requires: pip install sentence-transformers numpy
+Phase 0: deterministic prefix heuristic (no ML deps required).
+Phase 1+: local embeddings (BAAI/bge-small-en) + cosine-threshold clustering.
+Ranking is economics-first: priority = volume_7d x avg_cost x cache_miss_ratio.
 """
-from collections import defaultdict
+import hashlib
 import json
-from pathlib import Path
+
+from .store import connect, now_ms
+
+WEEK_MS = 7 * 24 * 3600 * 1000
+MIN_VOLUME_PER_WEEK = 100  # training refusal threshold
 
 
-def load_pairs(path="data/pairs.jsonl"):
-    return [json.loads(line) for line in open(path)] if Path(path).exists() else []
+def _prefix_key(prompt: str, words: int = 8) -> str:
+    """Cheap deterministic clustering key: first N content words.
+    Pure numbers are dropped so '...for region 3' and '...for region 7' cluster."""
+    tokens = [t for t in prompt.lower().split()
+             if not t.lstrip("-+").isdigit()]
+    return " ".join(tokens[:words])
 
-def rank_by_economics(pairs, min_volume=5):
-    """Group by exact-prefix heuristic first (Phase 0 has no embeddings dep);
-    rank clusters by total monthly cost — the Imprint differentiator."""
-    groups = defaultdict(list)
-    for p in pairs:
-        key = " ".join(p["prompt"].split()[:8])  # crude prefix key; embeddings come Phase 1
-        groups[key].append(p)
-    rows = []
+
+def _sig_id(key: str) -> str:
+    return "sig_" + hashlib.sha256(key.encode()).hexdigest()[:10]
+
+
+def mine(db_path: str = "data/imprint.db", min_volume: int = 5,
+         use_embeddings: bool = False) -> list[dict]:
+    """Cluster unassigned pairs into signatures; persist and return ranked rows."""
+    conn = connect(db_path)
+    week_ago = now_ms() - WEEK_MS
+    rows = conn.execute(
+        "SELECT id, prompt, cost_usd, cache_hit FROM pairs WHERE ts >= ?",
+        (week_ago,),
+    ).fetchall()
+
+    groups: dict[str, list] = {}
+    for r in rows:
+        key = _prefix_key(r["prompt"])
+        groups.setdefault(key, []).append(r)
+
+    ranked = []
     for key, items in groups.items():
-        if len(items) < min_volume:
-            continue
-        rows.append({
-            "signature_prefix": key,
-            "volume": len(items),
-            "avg_cost_usd": sum(i["cost_usd"] or 0 for i in items) / len(items),
-            "est_monthly_savings_target": sum(i["cost_usd"] or 0 for i in items),
+        volume_week = len(items)
+        avg_cost = sum(i["cost_usd"] or 0 for i in items) / volume_week
+        cache_miss = sum(1 for i in items if not i["cache_hit"]) / volume_week
+        priority = volume_week * avg_cost * cache_miss
+        sig_id = _sig_id(key)
+        status = "active" if volume_week >= MIN_VOLUME_PER_WEEK else "candidate"
+        conn.execute(
+            "INSERT INTO signatures (id, centroid_json, sample_ids, volume_7d,"
+            " avg_cost_usd, priority_score, status, created_at, updated_at)"
+            " VALUES (?,?,?,?,?,?,?,?,?)"
+            " ON CONFLICT(id) DO UPDATE SET volume_7d=?, avg_cost_usd=?,"
+            " priority_score=?, status=?, updated_at=?",
+            (
+                sig_id, json.dumps({"prefix": key}),
+                json.dumps([i["id"] for i in items[:50]]),
+                volume_week, avg_cost, priority, status, now_ms(), now_ms(),
+                volume_week, avg_cost, priority, status, now_ms(),
+            ),
+        )
+        ranked.append({
+            "signature_id": sig_id, "prefix": key, "volume_week": volume_week,
+            "avg_cost_usd": round(avg_cost, 6), "priority": round(priority, 4),
+            "status": status,
         })
-    return sorted(rows, key=lambda r: -r["est_monthly_savings_target"])
+
+    # assign signature_id back onto pairs
+    for key, items in groups.items():
+        sig_id = _sig_id(key)
+        conn.execute(
+            "UPDATE pairs SET signature_id=? WHERE id IN (%s)"
+            % ",".join("?" * len(items)),
+            [sig_id] + [i["id"] for i in items],
+        )
+    conn.commit()
+    return sorted(ranked, key=lambda r: -r["priority"])
+
+
+def report(db_path: str = "data/imprint.db", top: int = 10) -> list[dict]:
+    ranked = mine(db_path)
+    for r in ranked[:top]:
+        print(
+            f"{r['volume_week']:>6}/wk  ${r['avg_cost_usd']:.5f}/req  "
+            f"prio={r['priority']:.3f}  [{r['status']:9s}] {r['signature_id']}  {r['prefix'][:50]}"
+        )
+    return ranked
+
 
 if __name__ == "__main__":
-    for r in rank_by_economics(load_pairs())[:10]:
-        print(f"{r['volume']:>6}x  ${r['avg_cost_usd']:.4f}/req  target=${r['est_monthly_savings_target']:.2f}  {r['signature_prefix'][:60]}")
+    report()
