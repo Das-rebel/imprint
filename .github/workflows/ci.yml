@@ -11,6 +11,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - run: pip install -e ".[dev]" pytest
+      - run: pip install -e ".[dev]" pytest "ruff==0.15.10"
       - run: ruff check imprint/ tests/
       - run: python -m pytest -q
