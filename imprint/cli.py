@@ -46,6 +46,24 @@ def cmd_status(args):
     return 0
 
 
+def cmd_bases(args):
+    from .basemodel import detect_hardware, select_base
+    hw = detect_hardware()
+    print(f"hardware: {hw.kind} ({hw.vram_gb}GB) {hw.gpu_name}")
+    sel = select_base([], {})
+    if not sel.distiller_enabled:
+        print(f"distiller: DISABLED — {sel.block_reason}")
+        print("prompt-evolution (v1) remains fully functional.")
+        return 0
+    print(f"selected base : {sel.candidate.name} [{sel.candidate.tier}]")
+    print(f"  hf id       : {sel.candidate.hf_id}")
+    print(f"  backend     : {sel.candidate.backend}")
+    print(f"  score       : {sel.score:.1f}")
+    if sel.runner_up:
+        print(f"  runner-up   : {sel.runner_up.name}")
+    return 0
+
+
 def cmd_serve(args):
     from .server import serve
     port = int(args[0]) if args else None
@@ -53,8 +71,8 @@ def cmd_serve(args):
     return 0
 
 
-COMMANDS = {"collect": cmd_collect, "mine": cmd_mine,
-            "status": cmd_status, "serve": cmd_serve}
+COMMANDS = {"collect": cmd_collect, "mine": cmd_mine, "status": cmd_status,
+            "serve": cmd_serve, "bases": cmd_bases}
 
 
 def main():
