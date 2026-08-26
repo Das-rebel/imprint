@@ -3,41 +3,60 @@
 > *Every request leaves an imprint. Eventually, the imprints become instinct.*
 
 **Self-learning task handler for [A3M Router](https://github.com/Das-rebel/a3m-router).**
-Imprint watches router traffic, detects repeatable task patterns, and progressively optimizes
-them — v1 by evolving context/skill-prompts, v2 by distilling weights into self-managed local
-adapters. Recurring tasks trend toward zero marginal cost.
+Imprint watches router traffic, detects repeatable task patterns, and progressively
+optimizes them — v1 by evolving context/skill-prompts, v2 by distilling weights into
+self-managed local adapters.
 
 ```text
 Your AI bill should decay over time.
 ```
 
-## How it works
+## Architecture
 
+```mermaid
+flowchart LR
+    A3M["A3M Router"] -->|telemetry| C["Collector"]
+    C --> M["Signature Miner"]
+    M --> E["Skill Evolver (v1)"]
+    E --> G["Eval Gate"]
+    G --> L["Promotion Ladder<br/>shadow→canary→preferred→pinned"]
+    L -->|imprint-local endpoint| A3M
+    E -.->|"Phase 3+ (plateau)"| D["Distiller (QLoRA / LoRAX)"]
 ```
-A3M Router ──telemetry──▶ Collector ──▶ Signature Miner ──▶ Skill Evolver (v1)
-   ▲                                          │                    │
-   │                                          ▼                    ▼
-   └────────── OpenAI-compatible ◀──── Promotion Ladder ◀──── Eval Gate
-                endpoint: imprint-local      (shadow→canary→preferred→pinned)
-                                                     │
-                                     Phase 3+: Distiller (QLoRA via LoRAX)
-```
 
-- **Signatures**: clusters of semantically-similar recurring requests
-- **Skill Evolver**: per-signature optimized prompts + few-shot packs (v1)
-- **Promotion ladder**: `shadow → canary → preferred → pinned` with drift-triggered auto-demote
-- **Escalation-on-uncertainty**: low confidence returns `X-Imprint-Escalate: true` → A3M routes live
-
-## Status
-
-🚧 **Phase 0** — validating the core hypothesis on real A3M traffic.
-See [PLAN.md](PLAN.md) for the full council-reviewed roadmap.
-
-## Install (when shipped)
+## Quickstart (dev)
 
 ```bash
-pip install imprint-router
+git clone https://github.com/Das-rebel/imprint && cd imprint
+pip install -e ".[dev]"
+make test
+
+# Phase 0 — point at your A3M request log (JSONL):
+make collect LOG=/path/to/a3m-requests.jsonl
+make mine   # prints signatures ranked by $ savings potential
 ```
+
+## The Bill Decay Curve (goal)
+
+```text
+monthly AI cost
+ │▇▇▇
+ │▇▇▇▇▁▁
+ │▇▇▇▇▇▇▇▁▁▁          ← as Imprint promotes skills:
+ │▇▇▇▇▇▇▇▇▇▇▇▁▁▁        recurring tasks trend to ~$0 marginal
+ └──────────────────▶ time
+   wk1  wk2  wk4  wk8
+```
+
+Every promoted skill must beat the routed baseline on **both** cost and quality
+(enforced in code — see `imprint/ladder.py`).
+
+## Status: Phase 0
+
+🚧 Validating the core hypothesis on real A3M traffic.
+Roadmap + council-reviewed decisions: [PLAN.md](PLAN.md) · [ADRs](docs/adr/)
+
+**Help wanted:** run the collector on your traffic and [share a Phase 0 report](.github/ISSUE_TEMPLATE/phase0-report.md).
 
 ## License
 

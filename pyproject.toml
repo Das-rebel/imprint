@@ -21,5 +21,8 @@ classifiers = [
 Homepage = "https://github.com/Das-rebel/imprint"
 Repository = "https://github.com/Das-rebel/imprint"
 
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.4", "mypy>=1.10"]
+
 [tool.setuptools.packages.find]
-include = ["collector*", "miner*", "skills*", "serving*", "drift*"]
+include = ["imprint*"]

@@ -86,3 +86,12 @@ Imprint optimizes what's *worth* optimizing, and shows users a live "bill decay 
 
 ## Next Step When Building
 Create `Das-rebel/imprint` repo with this PLAN.md + Phase 0 skeleton (collector notebook over real A3M logs).
+
+---
+
+## Open Questions (council uncertainty)
+
+1. Can prompt-plateau be detected reliably without human review? (current heuristic: 3 flat evolutions → flag)
+2. Do real A3M workloads produce signatures above the 100/week training floor? (Phase 0 answers this)
+3. Will users accept shadow-mode latency overhead (2x on shadowed requests)?
+4. Cross-deployment "signature marketplace" — federated pattern sharing without data leakage. Deferred to Phase 4.
