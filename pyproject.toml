@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "imprint-router"
+version = "0.0.1"
+description = "Self-learning task handler for A3M Router - your AI bill should decay over time"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Subhajit Das"}]
+keywords = ["llm", "router", "distillation", "continual-learning", "a3m", "cost-optimization"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Homepage = "https://github.com/Das-rebel/imprint"
+Repository = "https://github.com/Das-rebel/imprint"
+
+[tool.setuptools.packages.find]
+include = ["collector*", "miner*", "skills*", "serving*", "drift*"]
