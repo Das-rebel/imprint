@@ -1,12 +1,22 @@
 # Imprint — Self-Learning Task Handler for A3M Router
 ### *Every request leaves an imprint. Eventually, the imprints become instinct.*
 
-**Package:** `imprint-router` (npm ✅ PyPI ✅) · **Product name:** Imprint · **Repo (planned):** `Das-rebel/imprint`
-**Status:** Plan v2 — rebuilt by agent council (Claude-MiniMax + Gemini-2.5 + research agents ×10)
+**Package:** `imprint-router` · **Product name:** Imprint · **Repo:** [Das-rebel/imprint](https://github.com/Das-rebel/imprint) ✅ live
+**Status:** Plan v3 — council-reviewed, Phase 0 in progress
 
 ---
 
-## Executive Summary (council-rebuilt)
+## Changelog
+
+| Ver | Date | Change |
+|-----|------|--------|
+| v1 | 2026-08-26 | Original draft — weight-distillation-first |
+| v2 | 2026-08-26 | Agent-council rebuild: context-evolution-first pivot; naming resolved |
+| v3 | 2026-08-26 | Repo live; added technical specs, data schemas, integration contract, eval methodology, competitive matrix, KPIs, risk register, GTM |
+
+---
+
+## Executive Summary
 
 Imprint is a complementary service that watches A3M Router traffic, detects repeatable task
 patterns ("signatures"), and progressively optimizes them — **v1 by evolving context/skill-prompts,
@@ -17,7 +27,7 @@ auto-demote ensures quality never silently regresses. The result: your AI bill d
 
 ---
 
-## The Strategic Pivot (from council review)
+## 1. Strategic Pivot (from council review)
 
 **v1 evolves CONTEXT, not weights.**
 
@@ -29,69 +39,205 @@ auto-demote ensures quality never silently regresses. The result: your AI bill d
 | Evidence | ACE framework: context often beats weights for narrow adaptation | SkillOpt (16K⭐) validates demand |
 | v2 role | — | Weights kick in when prompts plateau (Phase 3+) |
 
-This directly addresses the council's #1 strategic flaw: weight-distillation-first was premature.
+Rationale formalized in [ADR-001](docs/adr/ADR-001-context-evolution-before-weights.md).
 Microsoft SkillOpt proves trace→skill works; nobody pairs it with router economics. That's our wedge.
 
 ---
 
-## Architecture
+## 2. Architecture
 
-```
-A3M Router ──telemetry──▶ Collector ──▶ Signature Miner ──▶ Skill Evolver (v1)
-   ▲                                          │                    │
-   │                                          ▼                    ▼
-   └────────── OpenAI-compatible ◀──── Promotion Ladder ◀──── Eval Gate
-                endpoint: imprint-local      (shadow→canary→preferred→pinned)
-                                                     │
-                                     Phase 3+: Distiller (QLoRA via LoRAX)
+```mermaid
+flowchart LR
+    A3M["A3M Router"] -->|telemetry| C["Collector"]
+    C --> M["Signature Miner"]
+    M --> E["Skill Evolver (v1)"]
+    E --> G["Eval Gate"]
+    G --> L["Promotion Ladder<br/>shadow→canary→preferred→pinned"]
+    L -->|imprint-local endpoint| A3M
+    E -.->|"Phase 3+ (plateau)"| D["Distiller (QLoRA / LoRAX)"]
 ```
 
 - **Serving backend (v2): LoRAX** (Apache-2, 3.8K⭐) — purpose-built multi-adapter serving on one 24GB GPU.
 - **Escalation-on-uncertainty:** low-confidence responses return `X-Imprint-Escalate: true`; A3M routes live.
-- **Loose coupling:** Imprint subscribes to A3M logs; appears back as provider `imprint-local` (cost≈0).
-
-## The Killer Differentiator (open gap confirmed by research)
-
-**Economics-driven learning policy:** signatures are prioritized for optimization by
-`monthly_savings = volume × (routed_cost − optimized_cost_estimate)` weighted by cache affinity.
-No competitor (SkillOpt, DSPy, OpenPipe, LoRAX) sees cost data — they optimize blindly.
-Imprint optimizes what's *worth* optimizing, and shows users a live "bill decay curve."
-
-## Guardrails
-
-- **Training refusal threshold:** <100 occurrences/week/signature → refuse to learn (maintenance > savings).
-- **Behavioral cloning objectives only** (accepted outputs); never train on unverified responses.
-- **Replay buffers + model merging** (v2) to prevent catastrophic forgetting across retrain cycles.
-- **Drift monitor:** embedding-distance + outcome-quality checks; auto-demote on drift.
-
-## Phased Roadmap
-
-| Phase | Duration | Deliverable | Exit criteria |
-|-------|----------|-------------|---------------|
-| **0: Validate** | 1 week | 24–48h traffic capture → top signature → manually optimize its prompt → measure Δcost | ≥30% cost cut on one real signature |
-| **1: Skill Evolver (v1)** | 3 wks | Automated prompt-skill evolution per signature + eval gate | 5 signatures auto-optimized, zero regressions |
-| **2: Promotion ladder** | 4 wks | shadow→canary→preferred state machine + drift demote | 3+ signatures live-preferred, 30 days no-touch |
-| **3: Distiller (v2)** | 6 wks | QLoRA via LoRAX for signatures where prompts plateaued | distilled adapter beats best prompt-skill |
-| **4: Productize** | — | `pip install imprint-router`, bill-decay dashboard, benchmark post | Public launch |
-
-## Naming Decision (council split, resolved)
-
-| Option | Verdict |
-|--------|---------|
-| ~~imprint~~ / ~~imprint-ai~~ | ❌ TAKEN on npm |
-| **imprint-router** ✅ | Available npm+PyPI; consistent with `a3m-router`; keeps your chosen brand |
-| knack-ai | Available; council minority pick; weaker tie to A3M story |
-
-**Decision: Product = "Imprint" · Package = `imprint-router`**
-
-## Next Step When Building
-Create `Das-rebel/imprint` repo with this PLAN.md + Phase 0 skeleton (collector notebook over real A3M logs).
+- **Loose coupling:** Imprint subscribes to logs; appears back as provider `imprint-local` (cost≈0).
 
 ---
 
-## Open Questions (council uncertainty)
+## 3. Component Specifications
 
-1. Can prompt-plateau be detected reliably without human review? (current heuristic: 3 flat evolutions → flag)
-2. Do real A3M workloads produce signatures above the 100/week training floor? (Phase 0 answers this)
-3. Will users accept shadow-mode latency overhead (2x on shadowed requests)?
+### 3.1 Collector (`imprint/collector.py`)
+Consumes **generic OpenAI-compatible request logs** (not A3M-specific formats — keeps Imprint
+reusable with LiteLLM/OpenRouter exports). PII redaction at ingest: emails → `[EMAIL]`,
+cards → `[CARD]`, API keys → `[KEY]`.
+
+**Storage:** SQLite (Phase 0–1) → Parquet (Phase 2+). Zero infra, notebook-friendly.
+
+```sql
+CREATE TABLE pairs (
+  id TEXT PRIMARY KEY,            -- sha256(prompt)[:16]
+  ts INTEGER,                     -- unix ms
+  signature_id TEXT,              -- assigned by miner; NULL until clustered
+  prompt TEXT,                    -- redacted
+  response TEXT,                  -- redacted
+  model TEXT, provider TEXT,
+  cost_usd REAL, latency_ms INTEGER,
+  cache_hit BOOLEAN,
+  accepted BOOLEAN DEFAULT NULL   -- user feedback / heuristic acceptance
+);
+CREATE INDEX idx_pairs_sig ON pairs(signature_id, ts);
+```
+
+### 3.2 Signature Miner (`imprint/miner.py`)
+1. Embed redacted prompts (local `BAAI/bge-small-en`; no data leaves the machine)
+2. Cosine-threshold grouping (≥0.86 similarity) → HDBSCAN refinement (Phase 1)
+3. **Economics ranking** (the differentiator):
+   `priority = volume_7d × avg_cost × cache_miss_ratio`
+4. Lifecycle state machine per signature: `candidate → active → plateaued → retired`
+5. Persistence: JSON registry `{signature_id, centroid, sample_ids[], volume_7d, economics}`
+
+### 3.3 Skill Evolver (v1) (`imprint/evolver.py`)
+- Per-signature prompt template + few-shot pack (sampled from accepted pairs)
+- Every evolved artifact hash-versioned (`sha256(template + shots)[:12]`) for clean ladder A/Bs
+- Evolution loop (Phase 1): propose variant → shadow-eval on held-out samples → keep if better
+- **Plateau detector:** 3 consecutive evolutions with <5% improvement → flag for distiller queue
+- Phase 1 may adopt DSPy under the hood; interface stays ours
+
+### 3.4 Eval Gate
+Three signals, cheapest first:
+1. **Programmatic checks** — schema validity, length bounds, exact-match where possible (free)
+2. **Agreement stats** — skill output vs baseline output on same input (embedding cosine ≥ τ)
+3. **LLM-judge** — pairwise preference, cheap model, only on disagreement cases
+
+**North-star metric: regression rate** (fraction of outputs worse than baseline), not savings.
+
+### 3.5 Promotion Ladder (`imprint/ladder.py`) — enforced in code
+
+| Transition | Min samples | Max regression rate | Min cost savings |
+|------------|-------------|---------------------|------------------|
+| SHADOW → CANARY | 50 | 2% | 10% |
+| CANARY → PREFERRED | 200 | 1% | 25% |
+| PREFERRED → PINNED | 500 | 0.5% | 30% |
+
+Drift demote steps back exactly one stage. All criteria unit-tested (`tests/test_ladder.py`).
+
+### 3.6 Drift Monitor (`drift/`, Phase 2)
+- **Input drift:** rolling mean embedding distance vs signature centroid > 2σ → demote + re-mine
+- **Outcome drift:** weekly re-shadow of 5% of preferred traffic; regression spike → demote
+- **Cost drift:** if provider prices change such that savings < floor → demote to CANARY
+
+---
+
+## 4. A3M Integration Contract
+
+**Inbound (Imprint reads):**
+```json
+// one JSONL record per request — the only thing Imprint requires
+{"ts": 1756200000000, "prompt": "...", "response": "...", "model": "gpt-4o-mini",
+ "provider": "openai", "cost_usd": 0.0031, "latency_ms": 742, "cache_hit": false}
+```
+
+**Outbound (A3M sees):**
+Imprint registers itself as provider `imprint-local` via standard OpenAI-compatible endpoint.
+Extra headers:
+- `X-Imprint-Signature: <id>` — which signature handled it
+- `X-Imprint-Escalate: true` — low confidence; caller should retry via normal routing
+- `X-Imprint-Version: <prompt-hash>` — exact skill version served
+
+**Config surface (one entry in A3M):**
+```json
+{"providers": {"imprint-local": {"endpoint": "http://localhost:8477/v1", "cost_per_1k": 0.0, "priority": {"pinned": 0, "preferred": 1}}}}
+```
+
+---
+
+## 5. Guardrails
+
+- **Training refusal threshold:** <100 occurrences/week/signature → refuse to learn
+- **Optimization time cap per signature:** ≤ `monthly_savings / $10` hours of compute
+- **Behavioral cloning objectives only** — train/evolve exclusively on accepted outputs
+- **No-regression rule:** any promotion must win on BOTH cost and quality; ties favor baseline
+- **Replay buffers + model merging** (v2) against catastrophic forgetting
+- **Local-first:** prompts never leave the machine unless user opts into cloud eval models
+
+---
+
+## 6. Competitive Landscape (verified 2026-08-26)
+
+| Project | What it does | Gap Imprint fills |
+|---------|--------------|-------------------|
+| Microsoft SkillOpt (16K⭐) | Trains reusable NL skills from traces | No cost/economics awareness; not router-integrated |
+| DSPy | Programmatic prompt optimization | No signature discovery; no promotion safety ladder |
+| OpenPipe / Predibase | Managed fine-tuning platforms | Cloud-only; no continuous local learning; no routing integration |
+| LoRAX (3.8K⭐) | Multi-LoRA serving infra | Serving layer only — no learning loop |
+| Gorilla/Harmony | Tool-use model training | Domain-specific (API calls), not general task patterns |
+| Mem0 / Letta | Memory systems | Store/retrieve context, don't optimize task execution |
+
+**The open gap (validated by research agents ×10): nobody closes the loop from router
+economics → learning priority → safe rollout → measured bill decay.**
+
+---
+
+## 7. Phased Roadmap
+
+| Phase | Duration | Deliverable | Exit criteria | Status |
+|-------|----------|-------------|---------------|--------|
+| **0: Validate** | 1 wk | 24–48h capture → top signature → manual prompt opt → Δcost | ≥30% cut on one real signature | 🚧 issues #1–#3 |
+| **1: Skill Evolver** | 3 wks | Automated evolution + eval gate | 5 signatures auto-optimized, zero regressions | |
+| **2: Promotion ladder** | 4 wks | FSM live + drift demote | 3+ signatures preferred, 30 days no-touch | ✅ FSM code + tests done |
+| **3: Distiller (v2)** | 6 wks | QLoRA via LoRAX for plateaued signatures | distilled adapter beats best prompt-skill | |
+| **4: Productize** | — | `pip install imprint-router`, dashboard, benchmark post | Public launch | |
+
+---
+
+## 8. KPIs (what success looks like)
+
+| Metric | Definition | Target @ Phase 2 |
+|--------|-----------|-------------------|
+| Bill decay rate | Month-over-month routed-cost reduction attributable to Imprint | ≥15%/mo on active workloads |
+| Signature coverage | % of volume handled by PINNED skills | ≥40% |
+| Regression rate | Worse-than-baseline outputs across promoted skills | <0.5% |
+| Escalation precision | When Imprint escalates, was it right to? | >90% |
+| Time-to-value | Install → first promoted skill | <7 days |
+
+---
+
+## 9. Risk Register
+
+| # | Risk | Likelihood | Impact | Mitigation | Owner |
+|---|------|-----------|--------|------------|-------|
+| R1 | Real traffic too sparse (<100/wk/signature) | Med | Fatal | Phase 0 gate kills early; fallback positioning = batch analytics tool | Subho |
+| R2 | Prompt plateau detection unreliable | Med | High | Human-in-loop approval for PINNED until precision proven | Phase 1 |
+| R3 | Shadow-mode 2x latency annoys users | Low | Med | Shadow only sampled traffic (10%); make configurable | Phase 2 |
+| R4 | Provider price changes invalidate savings | High | Low | Cost drift monitor auto-demotes; savings recomputed nightly | Phase 2 |
+| R5 | A3M coupling creep | Med | Med | Integration contract (§4) is the only allowed touchpoint; CI check | Ongoing |
+| R6 | PLAN becomes graveyard | — | — | Exit criteria live in code + GitHub issues (#1–#3), 2-week clock | Subho |
+
+---
+
+## 10. Go-To-Market Sketch
+
+- **Launch post:** "Your AI bill should decay over time" — with real bill-decay curve from Phase 0/1 data
+- **Benchmark claim to publish (falsifiable):** *"On N weeks of production router traffic, Imprint
+  reduced recurring-task spend X% with regression rate below Y%."*
+- **Distribution:** HN "Show HN", r/LocalLLaMA (warmed account first), Twitter thread riding
+  A3M's existing biology-story audience
+- **Ecosystem story:** A3M = the router (breadth) · Imprint = the learner (depth) · shared install base
+
+---
+
+## 11. Decisions Index
+
+| ADR | Decision |
+|-----|----------|
+| [ADR-001](docs/adr/ADR-001-context-evolution-before-weights.md) | Context evolution before weight distillation |
+| [ADR-002](docs/adr/ADR-002-package-name-imprint-router.md) | Package name `imprint-router` (npm conflicts documented) |
+| [ADR-003](docs/adr/ADR-003-exit-criteria-in-code.md) | Promotion exit criteria enforced in code, not prose |
+
+---
+
+## Open Questions
+
+1. Can prompt-plateau be detected reliably without human review? *(heuristic shipped; unvalidated)*
+2. Do real A3M workloads produce signatures above the 100/week floor? *(Phase 0 answers)*
+3. Will users accept shadow-mode latency overhead? *(mitigated by sampling, R3)*
 4. Cross-deployment "signature marketplace" — federated pattern sharing without data leakage. Deferred to Phase 4.
