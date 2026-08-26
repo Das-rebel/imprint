@@ -27,21 +27,22 @@ class BaseCandidate:
     tokens_per_sec_gpu: float  # rough serve throughput on a 24GB class GPU
     backend: str           # mlx | cuda | cpu
     hf_id: str
+    gated: bool = False    # requires manual HF license acceptance
 
 
 DEFAULT_POOL: list[BaseCandidate] = [
     BaseCandidate("Qwen2.5-3B-Instruct", "small", 4.5, 3.0, 120, "cuda",
                   "Qwen/Qwen2.5-3B-Instruct"),
     BaseCandidate("Llama-3.2-3B-Instruct", "small", 4.5, 3.0, 110, "cuda",
-                  "meta-llama/Llama-3.2-3B-Instruct"),
+                  "meta-llama/Llama-3.2-3B-Instruct", gated=True),
     BaseCandidate("Qwen2.5-7B-Instruct", "medium", 9.0, 6.5, 70, "cuda",
                   "Qwen/Qwen2.5-7B-Instruct"),
     BaseCandidate("Llama-3.1-8B-Instruct", "medium", 10.5, 7.5, 62, "cuda",
                   "meta-llama/Llama-3.1-8B-Instruct"),
     BaseCandidate("Qwen2.5-14B-Instruct", "large", 17.0, 12.0, 34, "cuda",
                   "Qwen/Qwen2.5-14B-Instruct"),
-    BaseCandidate("Mistral-Small-24B", "large", 24.0, 16.0, 22, "cuda",
-                  "mistralai/Mistral-Small-24B-Instruct"),
+    BaseCandidate("Mistral-Small-3.2-24B", "large", 24.0, 16.0, 22, "cuda",
+                  "mistralai/Mistral-Small-3.2-24B-Instruct-2506"),
 ]
 
 # Apple-Silicon MLX equivalents (same capability tier, different runtime)
@@ -193,6 +194,15 @@ def select_base(sig_profiles: list[SignatureProfile],
     if hw.kind == "apple_silicon":
         pool = [replace_backend(c, MLX_SWAPS.get(c.name, c.hf_id), "mlx")
                 for c in pool]
+
+    # gated models need manual HF acceptance — deprioritize unless user opted in
+    opt_in_gated = os.environ.get("IMPRINT_ALLOW_GATED_MODELS") == "1"
+    usable = [c for c in pool if opt_in_gated or not c.gated]
+    if not usable:
+        return Selection(candidate=pool[0], score=0.0, distiller_enabled=False,
+                         block_reason="all candidates are HF-gated; set "
+                                      "IMPRINT_ALLOW_GATED_MODELS=1 after accepting licenses")
+    pool = usable
 
     fit, why_not = filter_by_hardware(pool, hw)
     if not fit:

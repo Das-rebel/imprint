@@ -66,8 +66,9 @@ flowchart LR
 ## 3. Component Specifications
 
 ### 3.1 Collector (`imprint/collector.py`)
-Consumes **generic OpenAI-compatible request logs** (not A3M-specific formats — keeps Imprint
-reusable with LiteLLM/OpenRouter exports). PII redaction at ingest: emails → `[EMAIL]`,
+Consumes **model-agnostic request logs** — OpenAI, Anthropic, Gemini-style, or raw formats,
+auto-detected (see §4). Keeps Imprint reusable with A3M/LiteLLM/OpenRouter exports.
+PII redaction at ingest: emails → `[EMAIL]`,
 cards → `[CARD]`, API keys → `[KEY]`.
 
 **Storage:** SQLite (Phase 0–1) → Parquet (Phase 2+). Zero infra, notebook-friendly.
@@ -120,7 +121,7 @@ Three signals, cheapest first:
 
 Drift demote steps back exactly one stage. All criteria unit-tested (`tests/test_ladder.py`).
 
-### 3.6 Drift Monitor (`drift/`, Phase 2)
+### 3.6 Drift Monitor (`imprint/drift.py`)
 - **Input drift:** rolling mean embedding distance vs signature centroid > 2σ → demote + re-mine
 - **Outcome drift:** weekly re-shadow of 5% of preferred traffic; regression spike → demote
 - **Cost drift:** if provider prices change such that savings < floor → demote to CANARY
@@ -175,9 +176,9 @@ format, with imprint metadata both as HTTP headers AND in-body:
 |---------|--------------|-------------------|
 | Microsoft SkillOpt (16K⭐) | Trains reusable NL skills from traces | No cost/economics awareness; not router-integrated |
 | DSPy | Programmatic prompt optimization | No signature discovery; no promotion safety ladder |
-| OpenPipe / Predibase | Managed fine-tuning platforms | Cloud-only; no continuous local learning; no routing integration |
+| OpenPipe / Predibase | Managed fine-tuning platforms (LoRAX serving is OSS) | Hosted-first; no continuous local learning loop; no routing integration |
 | LoRAX (3.8K⭐) | Multi-LoRA serving infra | Serving layer only — no learning loop |
-| Gorilla/Harmony | Tool-use model training | Domain-specific (API calls), not general task patterns |
+| Gorilla (Berkeley) | Tool-use / function-call model training | Domain-specific (API calls), not general task patterns |
 | Mem0 / Letta | Memory systems | Store/retrieve context, don't optimize task execution |
 
 **The open gap (validated by research agents ×10): nobody closes the loop from router
@@ -249,3 +250,23 @@ economics → learning priority → safe rollout → measured bill decay.**
 2. Do real A3M workloads produce signatures above the 100/week floor? *(Phase 0 answers)*
 3. Will users accept shadow-mode latency overhead? *(mitigated by sampling, R3)*
 4. Cross-deployment "signature marketplace" — federated pattern sharing without data leakage. Deferred to Phase 4.
+
+---
+
+## Fact-Integrity Audit (2026-08-26)
+
+All factual claims in this document were re-verified against live sources
+(GitHub API, HuggingFace API, npm/PyPI registries, arXiv). Corrections made:
+
+| Claim | Status | Action |
+|-------|--------|--------|
+| Microsoft SkillOpt 16K⭐ | ✅ verified | none |
+| LoRAX / S-LoRA / punica stars + licenses | ✅ verified | none |
+| ACE framework arXiv 2510.04618 | ✅ exists | claim softened: context "often beats" weights |
+| ~~Gorilla/Harmony~~ | ❌ "Harmony" unverifiable | corrected to "Gorilla (Berkeley)" |
+| ~~mistralai/Mistral-Small-24B-Instruct~~ | ❌ HF id does not exist | corrected to `Mistral-Small-3.2-24B-Instruct-2506` |
+| Llama-3.2-3B-Instruct | ⚠️ HF-gated (manual) | flagged in models.json; auto-excluded from selection unless `IMPRINT_ALLOW_GATED_MODELS=1` |
+| ~~"OpenPipe/Predibase cloud-only"~~ | ⚠️ overstated (LoRAX is OSS) | softened to "hosted-first" |
+
+**Policy:** any new external claim added to this plan must carry a verification link or be
+marked *(unverified)*. Model ids in `models.json` are checked at `imprint bases` runtime.
