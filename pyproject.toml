@@ -26,3 +26,6 @@ dev = ["pytest>=8", "ruff>=0.4", "mypy>=1.10"]
 
 [tool.setuptools.packages.find]
 include = ["imprint*"]
+
+[tool.ruff.lint]
+ignore = ["T201", "S101", "PERF203", "E741"]

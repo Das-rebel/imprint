@@ -4,18 +4,17 @@ Phase 0: manual prompts with hash versioning for clean A/B in the ladder.
 Phase 1: automated evolution (DSPy-backed). Prompt-plateau heuristic:
 3 consecutive evolutions yielding <5% improvement -> flag for v2 distillation.
 """
+from dataclasses import dataclass, field
 import hashlib
 import json
-from typing import Optional
-from dataclasses import dataclass, field
-from pathlib import Path
+
 
 PLATEAU_WINDOW = 3
 PLATEAU_THRESHOLD = 0.05  # <5% improvement counts as flat
 
 
 def prompt_hash(text: str) -> str:
-    return hashlib.sha1(text.encode()).hexdigest()[:12]
+    return hashlib.sha256(text.encode()).hexdigest()[:12]
 
 
 @dataclass
@@ -24,7 +23,7 @@ class EvolvedPrompt:
     version: int
     template: str
     few_shot_pack: list = field(default_factory=list)
-    parent_hash: Optional[str] = None
+    parent_hash: str | None = None
 
     @property
     def hash(self) -> str:

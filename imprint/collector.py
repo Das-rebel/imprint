@@ -3,8 +3,12 @@
 Consumes A3M request logs (JSONL or webhook) and writes redacted, embedding-ready
 records to data/pairs.jsonl for signature mining.
 """
-import json, hashlib, re, sys
+import hashlib
+import json
 from pathlib import Path
+import re
+import sys
+
 
 PII_PATTERNS = [
     (re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.]+\b"), "[EMAIL]"),
@@ -21,7 +25,7 @@ def normalize(record: dict) -> dict:
     prompt = redact(record.get("prompt", ""))
     response = redact(record.get("response", ""))
     return {
-        "id": hashlib.sha1(prompt.encode()).hexdigest()[:16],
+        "id": hashlib.sha256(prompt.encode()).hexdigest()[:16],
         "prompt": prompt,
         "response": response,
         "model": record.get("model"),
@@ -33,16 +37,21 @@ def normalize(record: dict) -> dict:
     }
 
 def run(input_path: str, output_path: str = "data/pairs.jsonl") -> int:
-    out = Path(output_path); out.parent.mkdir(exist_ok=True)
+    out = Path(output_path)
+    out.parent.mkdir(exist_ok=True)
     n = 0
-    with open(input_path) as f, open(out, "a") as w:
+    lines = []
+    with open(input_path) as f:
         for line in f:
             try:
                 rec = normalize(json.loads(line))
                 if rec["prompt"]:
-                    w.write(json.dumps(rec) + "\n"); n += 1
+                    lines.append(json.dumps(rec))
+                    n += 1
             except json.JSONDecodeError:
                 continue
+    with open(out, "a") as w:
+        w.write("\n".join(lines) + ("\n" if lines else ""))
     print(f"collected {n} pairs -> {out}")
     return n
 

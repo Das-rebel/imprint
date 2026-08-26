@@ -1,4 +1,4 @@
-from imprint.evolver import EvolutionTracker, prompt_hash, EvolvedPrompt
+from imprint.evolver import EvolutionTracker, EvolvedPrompt, prompt_hash
 
 
 def test_plateau_detected_after_three_flat_evolutions():

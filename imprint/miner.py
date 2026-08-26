@@ -4,12 +4,13 @@ Uses cheap embeddings + HDBSCAN-style clustering to find recurring patterns,
 then scores them by volume x avg-cost (the economics-first ranking).
 Requires: pip install sentence-transformers numpy
 """
-import json
 from collections import defaultdict
+import json
 from pathlib import Path
 
+
 def load_pairs(path="data/pairs.jsonl"):
-    return [json.loads(l) for l in open(path)] if Path(path).exists() else []
+    return [json.loads(line) for line in open(path)] if Path(path).exists() else []
 
 def rank_by_economics(pairs, min_volume=5):
     """Group by exact-prefix heuristic first (Phase 0 has no embeddings dep);
