@@ -20,6 +20,7 @@ class Skill:
     id: Optional[int] = None
     version: int = 1
     prompt_hash: str = ""
+    parent_hash: Optional[str] = None
     stage: str = "shadow"
 
     def __post_init__(self):
