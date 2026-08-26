@@ -1,6 +1,11 @@
 from imprint.basemodel import (
-    Hardware, Selection, SignatureProfile,
-    filter_by_hardware, load_pool, score_candidate, select_base,
+    Hardware,
+    Selection,
+    SignatureProfile,
+    filter_by_hardware,
+    load_pool,
+    score_candidate,
+    select_base,
 )
 
 POOL = load_pool()
@@ -8,8 +13,10 @@ SMALL = POOL[0]
 MEDIUM = POOL[2]
 LARGE = POOL[4]
 
-SIGS = [SignatureProfile("s1", est_monthly_savings=40),
-        SignatureProfile("s2", est_monthly_savings=25)]
+SIGS = [
+    SignatureProfile("s1", est_monthly_savings=40),
+    SignatureProfile("s2", est_monthly_savings=25),
+]
 WINS = {"s1": 1}
 
 
@@ -22,7 +29,7 @@ def test_nvidia_16gb_filters_large_models():
     fit, _ = filter_by_hardware(POOL, Hardware("nvidia", 16.0))
     names = {c.name for c in fit}
     assert MEDIUM.name in names
-    assert LARGE.name not in names          # 17GB QLoRA > 16GB budget
+    assert LARGE.name not in names  # 17GB QLoRA > 16GB budget
     assert SMALL.name in names
 
 
@@ -45,12 +52,13 @@ def test_consolidation_bonus_prefers_shared_base():
     small_score = score_candidate(SMALL, many_sigs, {}, 5)
     # medium gets same consolidation but less tier bonus and slower tok/s
     medium_score = score_candidate(MEDIUM, many_sigs, {}, 5)
-    assert small_score > medium_score       # smallest-model-wins tiebreak
+    assert small_score > medium_score  # smallest-model-wins tiebreak
 
 
 def test_reasoning_tasks_penalize_small_tier():
-    hard = [SignatureProfile("h1", est_monthly_savings=50,
-                             needs_multi_step_reasoning=True)]
+    hard = [
+        SignatureProfile("h1", est_monthly_savings=50, needs_multi_step_reasoning=True)
+    ]
     small_score = score_candidate(SMALL, hard, {}, 1)
     medium_score = score_candidate(MEDIUM, hard, {}, 1)
     assert medium_score > small_score
@@ -60,7 +68,7 @@ def test_low_economics_gates_out_training():
     tiny = [SignatureProfile("t1", est_monthly_savings=1)]
     low = score_candidate(MEDIUM, tiny, {}, 1)
     normal = score_candidate(MEDIUM, SIGS, {}, 1)
-    assert low < normal                     # penalty applied
+    assert low < normal  # penalty applied
 
 
 def test_selection_reports_runner_up():

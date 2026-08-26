@@ -10,6 +10,7 @@ Supported ingress shapes (auto-detected):
   - Raw completion        : {"prompt": "...", "completion"/"response": "..."}
   - Router log records    : A3M/LiteLLM/OpenRouter JSONL export (see README)
 """
+
 from __future__ import annotations
 
 import re
@@ -76,8 +77,10 @@ def detect_format(record: dict) -> str:
 
 # ---------------------------------------------------------------- egress ----
 
-def render_response(fmt: str, text: str, model: str,
-                    extra_headers: Optional[dict] = None) -> dict:
+
+def render_response(
+    fmt: str, text: str, model: str, extra_headers: Optional[dict] = None
+) -> dict:
     """Wrap `text` back into the caller's native response shape."""
     meta = {
         "imprint_signature": extra_headers.get("X-Imprint-Signature"),
@@ -89,9 +92,13 @@ def render_response(fmt: str, text: str, model: str,
             "id": f"imprint-{meta['imprint_version'] or 'dev'}",
             "object": "chat.completion",
             "model": model,
-            "choices": [{"index": 0,
-                         "message": {"role": "assistant", "content": text},
-                         "finish_reason": "stop"}],
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": text},
+                    "finish_reason": "stop",
+                }
+            ],
             "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
             **{k: v for k, v in meta.items() if v not in (None, False)},
         }
@@ -107,17 +114,23 @@ def render_response(fmt: str, text: str, model: str,
         }
     if fmt == "gemini":
         return {
-            "candidates": [{
-                "content": {"parts": [{"text": text}], "role": "model"},
-                "finishReason": "STOP",
-            }],
+            "candidates": [
+                {
+                    "content": {"parts": [{"text": text}], "role": "model"},
+                    "finishReason": "STOP",
+                }
+            ],
             **{"imprint": {k: v for k, v in meta.items() if v not in (None, False)}},
         }
     # raw / unknown
-    return {"response": text, **{k: v for k, v in meta.items() if v not in (None, False)}}
+    return {
+        "response": text,
+        **{k: v for k, v in meta.items() if v not in (None, False)},
+    }
 
 
 # --------------------------------------------------------------- ingress ----
+
 
 def normalize_record(record: dict) -> Optional[dict]:
     """Normalize any supported log/request shape into an Imprint pair dict.

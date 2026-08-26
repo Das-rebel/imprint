@@ -1,4 +1,5 @@
 """SQLite storage layer for Imprint. Zero-infra, notebook-friendly."""
+
 import sqlite3
 import time
 from pathlib import Path

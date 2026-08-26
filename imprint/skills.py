@@ -1,4 +1,5 @@
 """Skills registry: versioned prompt artifacts per signature."""
+
 import json
 import sqlite3
 from dataclasses import dataclass, field
@@ -9,6 +10,7 @@ from .store import now_ms
 
 def prompt_hash(text: str, shots: list | None = None) -> str:
     import hashlib
+
     return hashlib.sha256((text + json.dumps(shots or [])).encode()).hexdigest()[:12]
 
 
@@ -84,8 +86,13 @@ def update_ladder_stats(conn: sqlite3.Connection, skill_id: int, ladder) -> None
         "UPDATE skills SET stage=?, samples=?, regressions=?,"
         " cost_saved_usd=?, baseline_cost_usd=?, updated_at=? WHERE id=?",
         (
-            ladder.stage.name.lower(), ladder.samples, ladder.regressions,
-            ladder.cost_saved_usd, ladder.baseline_cost_usd, now_ms(), skill_id,
+            ladder.stage.name.lower(),
+            ladder.samples,
+            ladder.regressions,
+            ladder.cost_saved_usd,
+            ladder.baseline_cost_usd,
+            now_ms(),
+            skill_id,
         ),
     )
     conn.commit()

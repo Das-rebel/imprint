@@ -2,6 +2,7 @@
 
 Phase 0 implements signals 1 and 2 (zero API cost). Signal 3 is a pluggable hook.
 """
+
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 
@@ -10,7 +11,7 @@ from typing import Callable, Optional
 class EvalResult:
     passed: bool
     programmatic_ok: bool
-    agreement: float          # cosine-ish similarity vs baseline output (0..1)
+    agreement: float  # cosine-ish similarity vs baseline output (0..1)
     regression_suspected: bool
     notes: list = field(default_factory=list)
 
@@ -27,8 +28,12 @@ def jaccard(a: str, b: str) -> float:
     return len(sa & sb) / len(sa | sb)
 
 
-def programmatic_checks(output: str, min_len: int = 1, max_len: int = 20000,
-                        must_not_contain: tuple = ("[EMAIL]", "[CARD]", "[KEY]")) -> tuple[bool, list]:
+def programmatic_checks(
+    output: str,
+    min_len: int = 1,
+    max_len: int = 20000,
+    must_not_contain: tuple = ("[EMAIL]", "[CARD]", "[KEY]"),
+) -> tuple[bool, list]:
     notes = []
     if not output or len(output) < min_len:
         return False, ["output empty or too short"]
@@ -41,13 +46,15 @@ def programmatic_checks(output: str, min_len: int = 1, max_len: int = 20000,
 
 
 class EvalGate:
-    def __init__(self, agreement_threshold: float = 0.55,
-                 judge_fn: Optional[Callable] = None):
+    def __init__(
+        self, agreement_threshold: float = 0.55, judge_fn: Optional[Callable] = None
+    ):
         self.agreement_threshold = agreement_threshold
         self.judge_fn = judge_fn  # optional: (prompt, baseline, candidate) -> bool
 
-    def evaluate(self, prompt: str, baseline_output: str,
-                 skill_output: str) -> EvalResult:
+    def evaluate(
+        self, prompt: str, baseline_output: str, skill_output: str
+    ) -> EvalResult:
         ok, notes = programmatic_checks(skill_output)
         agreement = jaccard(baseline_output, skill_output)
         regression = (not ok) or (agreement < self.agreement_threshold)

@@ -4,6 +4,7 @@ Auto-detects and normalizes: OpenAI ChatCompletion, Anthropic Messages,
 Gemini-style contents, raw prompt/completion, and router JSONL exports
 (A3M / LiteLLM / OpenRouter). PII redacted at ingest.
 """
+
 import json
 import sys
 
@@ -11,7 +12,9 @@ import hashlib
 import sqlite3
 
 from .adapters import (  # noqa: F401
-    normalize_record, redact, render_response,
+    normalize_record,
+    redact,
+    render_response,
 )
 from .store import connect, now_ms
 
@@ -30,9 +33,17 @@ def ingest_record(conn: sqlite3.Connection, record: dict) -> tuple[str, int]:
         conn.execute(
             "INSERT INTO pairs (id, ts, prompt, response, model, provider,"
             " cost_usd, latency_ms, cache_hit) VALUES (?,?,?,?,?,?,?,?,?)",
-            (pid, record.get("ts") or now_ms(), rec["prompt"], rec["response"],
-             rec["model"], rec["provider"], rec["cost_usd"],
-             rec["latency_ms"], int(rec["cache_hit"])),
+            (
+                pid,
+                record.get("ts") or now_ms(),
+                rec["prompt"],
+                rec["response"],
+                rec["model"],
+                rec["provider"],
+                rec["cost_usd"],
+                rec["latency_ms"],
+                int(rec["cache_hit"]),
+            ),
         )
         return "inserted", 1
     except sqlite3.IntegrityError:

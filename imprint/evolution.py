@@ -10,6 +10,7 @@ Loop:
   3. Shadow-eval on held-out via EvalGate
   4. Keep if strictly better on cost-adjusted quality; else discard
 """
+
 from __future__ import annotations
 
 import random
@@ -24,10 +25,10 @@ from .skills import Skill
 # ------------------------------------------------------- mutation ops -------
 
 MUTATIONS = [
-    "add_constraint",     # append explicit output constraint
-    "tighten_format",     # demand structured/terse output
-    "add_example",        # grow few-shot pack
-    "clarify_audience",   # state audience & register
+    "add_constraint",  # append explicit output constraint
+    "tighten_format",  # demand structured/terse output
+    "add_example",  # grow few-shot pack
+    "clarify_audience",  # state audience & register
 ]
 
 CONSTRAINT_LINES = [
@@ -37,8 +38,12 @@ CONSTRAINT_LINES = [
 ]
 
 
-def propose_variant(base: Skill, strategy: str, rng: Optional[random.Random] = None,
-                    candidate_shots: Optional[list] = None) -> Skill:
+def propose_variant(
+    base: Skill,
+    strategy: str,
+    rng: Optional[random.Random] = None,
+    candidate_shots: Optional[list] = None,
+) -> Skill:
     """Create a mutated child of `base`. Pure function; no I/O."""
     rng = rng or random.Random()
     template = base.template
@@ -69,13 +74,14 @@ def propose_variant(base: Skill, strategy: str, rng: Optional[random.Random] = N
 
 # --------------------------------------------------------- eval helpers -----
 
+
 @dataclass
 class EvolutionStep:
     generation: int
     strategy: str
     child_hash: str
     avg_agreement: float
-    avg_cost_delta: float       # negative = cheaper
+    avg_cost_delta: float  # negative = cheaper
     kept: bool
     notes: list = field(default_factory=list)
 
@@ -83,22 +89,32 @@ class EvolutionStep:
 class Evolver:
     """One evolution run over one signature's held-out set."""
 
-    def __init__(self, gate: Optional[EvalGate] = None,
-                 cost_fn: Optional[Callable[[str], float]] = None,
-                 seed: int = 13):
+    def __init__(
+        self,
+        gate: Optional[EvalGate] = None,
+        cost_fn: Optional[Callable[[str], float]] = None,
+        seed: int = 13,
+    ):
         self.gate = gate or EvalGate()
-        self.cost_fn = cost_fn      # prompt text -> estimated cost (routing-aware!)
+        self.cost_fn = cost_fn  # prompt text -> estimated cost (routing-aware!)
         self.rng = random.Random(seed)
 
-    def evaluate_child(self, base: Skill, child: Skill,
-                       held_out: list[dict],
-                       execute: Callable[[str, str], str]) -> EvolutionStep:
+    def evaluate_child(
+        self,
+        base: Skill,
+        child: Skill,
+        held_out: list[dict],
+        execute: Callable[[str, str], str],
+    ) -> EvolutionStep:
         """execute(rendered_prompt, original_prompt) -> model output."""
         if child.prompt_hash == base.prompt_hash:
             return EvolutionStep(
-                generation=child.version, strategy="noop",
-                child_hash=child.prompt_hash, avg_agreement=0.0,
-                avg_cost_delta=0.0, kept=False,
+                generation=child.version,
+                strategy="noop",
+                child_hash=child.prompt_hash,
+                avg_agreement=0.0,
+                avg_cost_delta=0.0,
+                kept=False,
                 notes=["mutation produced no change; discarded"],
             )
         agreements, deltas, regressions = [], [], 0
@@ -110,8 +126,10 @@ class Evolver:
                 regressions += 1
             agreements.append(result.agreement)
             if self.cost_fn:
-                deltas.append(self.cost_fn(child.render(pair["prompt"]))
-                              - self.cost_fn(base.render(pair["prompt"])))
+                deltas.append(
+                    self.cost_fn(child.render(pair["prompt"]))
+                    - self.cost_fn(base.render(pair["prompt"]))
+                )
 
         n = max(len(held_out), 1)
         avg_agr = sum(agreements) / n
@@ -125,7 +143,8 @@ class Evolver:
             and avg_cost_delta <= 0
         )
         return EvolutionStep(
-            generation=child.version, strategy="",
+            generation=child.version,
+            strategy="",
             child_hash=child.prompt_hash,
             avg_agreement=round(avg_agr, 4),
             avg_cost_delta=round(avg_cost_delta, 8),
@@ -133,10 +152,14 @@ class Evolver:
             notes=[f"regression_rate={reg_rate:.3f}"],
         )
 
-    def run(self, base: Skill, held_out: list[dict],
-            execute: Callable[[str, str], str],
-            candidate_shots: Optional[list] = None,
-            max_generations: int = 5) -> tuple[Skill, list[EvolutionStep]]:
+    def run(
+        self,
+        base: Skill,
+        held_out: list[dict],
+        execute: Callable[[str, str], str],
+        candidate_shots: Optional[list] = None,
+        max_generations: int = 5,
+    ) -> tuple[Skill, list[EvolutionStep]]:
         """Evolve until plateau or budget. Returns best skill + step log."""
         current = base
         history: list[EvolutionStep] = []
@@ -157,7 +180,7 @@ class Evolver:
                 flat_rounds += 1
             history.append(step)
 
-            if flat_rounds >= 3:   # matches EvolutionTracker threshold
+            if flat_rounds >= 3:  # matches EvolutionTracker threshold
                 break
 
         return current, history

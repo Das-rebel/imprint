@@ -1,4 +1,5 @@
 """Drift Monitor: input, outcome, and cost drift detection with demote triggers."""
+
 import statistics
 from dataclasses import dataclass, field
 
@@ -6,7 +7,7 @@ from dataclasses import dataclass, field
 @dataclass
 class DriftVerdict:
     drifted: bool
-    kind: str = ""       # input|outcome|cost
+    kind: str = ""  # input|outcome|cost
     detail: str = ""
     notes: list = field(default_factory=list)
 
@@ -36,8 +37,9 @@ class InputDriftMonitor:
             return 1 - (len(a & b) / len(union)) if union else 1.0
 
         if len(self.references) < 3:
-            return DriftVerdict(drifted=False,
-                                notes=["insufficient references (<3); no verdict"])
+            return DriftVerdict(
+                drifted=False, notes=["insufficient references (<3); no verdict"]
+            )
 
         # distance of each recent prompt to nearest reference
         dists = [min(dist(r, s) for r in self.references) for s in recent_sets]
@@ -55,7 +57,8 @@ class InputDriftMonitor:
         mean_recent = statistics.mean(dists)
         drifted = mean_recent > mu + self.threshold_sigma * sigma
         return DriftVerdict(
-            drifted=drifted, kind="input",
+            drifted=drifted,
+            kind="input",
             detail=f"recent_mean_dist={mean_recent:.3f} vs ref {mu:.3f}+{sigma:.3f}sigma",
         )
 
@@ -72,6 +75,7 @@ class CostDriftMonitor:
         ratio = (baseline_cost - skill_cost) / baseline_cost
         drifted = ratio < self.min_savings_ratio
         return DriftVerdict(
-            drifted=drifted, kind="cost",
+            drifted=drifted,
+            kind="cost",
             detail=f"savings={ratio:.2%} < floor {self.min_savings_ratio:.0%}",
         )

@@ -3,28 +3,35 @@
 shadow -> canary -> preferred -> pinned, with drift-triggered auto-demote.
 Exit criteria per stage are enforced in code (ADR-003).
 """
+
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
 
 class Stage(Enum):
-    SHADOW = auto()      # log-only, no user impact
-    CANARY = auto()      # 5% traffic, compared vs baseline
-    PREFERRED = auto()   # 50% traffic, winning on cost AND quality
-    PINNED = auto()      # 100% traffic, auto-demote on drift
+    SHADOW = auto()  # log-only, no user impact
+    CANARY = auto()  # 5% traffic, compared vs baseline
+    PREFERRED = auto()  # 50% traffic, winning on cost AND quality
+    PINNED = auto()  # 100% traffic, auto-demote on drift
 
 
 @dataclass
 class StageCriteria:
     min_samples: int
-    max_regression_rate: float   # fraction of outputs worse than baseline
-    min_cost_savings: float      # fraction of baseline cost saved
+    max_regression_rate: float  # fraction of outputs worse than baseline
+    min_cost_savings: float  # fraction of baseline cost saved
 
 
 CRITERIA: dict[Stage, StageCriteria] = {
-    Stage.CANARY: StageCriteria(min_samples=50, max_regression_rate=0.02, min_cost_savings=0.10),
-    Stage.PREFERRED: StageCriteria(min_samples=200, max_regression_rate=0.01, min_cost_savings=0.25),
-    Stage.PINNED: StageCriteria(min_samples=500, max_regression_rate=0.005, min_cost_savings=0.30),
+    Stage.CANARY: StageCriteria(
+        min_samples=50, max_regression_rate=0.02, min_cost_savings=0.10
+    ),
+    Stage.PREFERRED: StageCriteria(
+        min_samples=200, max_regression_rate=0.01, min_cost_savings=0.25
+    ),
+    Stage.PINNED: StageCriteria(
+        min_samples=500, max_regression_rate=0.005, min_cost_savings=0.30
+    ),
 }
 
 NEXT_STAGE = {
@@ -62,12 +69,16 @@ class SkillLadder:
         order = list(Stage)
         idx = order.index(self.stage)
         self.stage = order[max(idx - 1, 0)]
-        self.history.append({"event": "demote", "reason": reason, "to": self.stage.name})
+        self.history.append(
+            {"event": "demote", "reason": reason, "to": self.stage.name}
+        )
         return self.stage
 
     def promote_if_eligible(self) -> Stage | None:
         nxt = self.evaluate()
         if nxt:
-            self.history.append({"event": "promote", "from": self.stage.name, "to": nxt.name})
+            self.history.append(
+                {"event": "promote", "from": self.stage.name, "to": nxt.name}
+            )
             self.stage = nxt
         return nxt

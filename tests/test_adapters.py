@@ -7,9 +7,14 @@ def test_detect_openai():
 
 
 def test_detect_anthropic():
-    rec = {"model": "claude-x", "system": "be nice",
-           "messages": [{"role": "user", "content": "hi"},
-                        {"role": "assistant", "content": "hello"}]}
+    rec = {
+        "model": "claude-x",
+        "system": "be nice",
+        "messages": [
+            {"role": "user", "content": "hi"},
+            {"role": "assistant", "content": "hello"},
+        ],
+    }
     assert detect_format(rec) == "anthropic"
 
 
@@ -19,11 +24,15 @@ def test_detect_gemini():
 
 
 def test_normalize_openai_messages_flatten():
-    rec = {"model": "gpt-4o",
-           "messages": [{"role": "system", "content": "You help."},
-                        {"role": "user", "content": "Summarize this"}],
-           "response_body": {"content": "Sure thing"},
-           "usage": {"total_cost": 0.01}}
+    rec = {
+        "model": "gpt-4o",
+        "messages": [
+            {"role": "system", "content": "You help."},
+            {"role": "user", "content": "Summarize this"},
+        ],
+        "response_body": {"content": "Sure thing"},
+        "usage": {"total_cost": 0.01},
+    }
     pair = normalize_record(rec)
     assert "system: You help." in pair["prompt"]
     assert "user: Summarize this" in pair["prompt"]
@@ -33,16 +42,21 @@ def test_normalize_openai_messages_flatten():
 
 
 def test_normalize_anthropic_content_parts():
-    rec = {"model": "claude-x", "system": "s",
-           "messages": [{"role": "user", "content": [
-               {"type": "text", "text": "describe"}]}],
-           "response": "ok"}
+    rec = {
+        "model": "claude-x",
+        "system": "s",
+        "messages": [
+            {"role": "user", "content": [{"type": "text", "text": "describe"}]}
+        ],
+        "response": "ok",
+    }
     pair = normalize_record(rec)
     assert "describe" in pair["prompt"]
 
 
 def test_redaction_applies_to_prompts():
     from imprint.collector import ingest_record
+
     # redaction happens at collector layer; adapter output feeds it
     rec = {"prompt": "email me at bob@x.com", "response": "ok"}
     # redaction is applied inside normalize_record (single ingress path)
@@ -50,6 +64,7 @@ def test_redaction_applies_to_prompts():
     import tempfile
     import os
     from imprint.store import connect
+
     db = tempfile.mktemp(suffix=".db")
     conn = connect(db)
     kind, _ = ingest_record(conn, rec)
@@ -59,8 +74,11 @@ def test_redaction_applies_to_prompts():
 
 
 def test_render_response_each_format():
-    hdr = {"X-Imprint-Signature": "sig_1", "X-Imprint-Version": "abc123",
-           "X-Imprint-Escalate": "true"}
+    hdr = {
+        "X-Imprint-Signature": "sig_1",
+        "X-Imprint-Version": "abc123",
+        "X-Imprint-Escalate": "true",
+    }
     o = render_response("openai", "hi", "m", hdr)
     assert o["choices"][0]["message"]["content"] == "hi"
     a = render_response("anthropic", "hi", "m", hdr)

@@ -8,6 +8,7 @@ Escalation contract (any format): response carries `X-Imprint-Escalate: true`
 semantics — for JSON bodies an `imprint.escalate: true` field; callers should
 retry via their normal router path.
 """
+
 from __future__ import annotations
 
 import json
@@ -22,8 +23,9 @@ DEFAULT_PORT = 8477
 CONFIDENCE_THRESHOLD = 0.55
 
 
-def _find_skill(conn: sqlite3.Connection, prompt: str,
-                match_fn) -> tuple[Skill | None, sqlite3.Row | None]:
+def _find_skill(
+    conn: sqlite3.Connection, prompt: str, match_fn
+) -> tuple[Skill | None, sqlite3.Row | None]:
     """Find the highest-stage active skill whose template matches the signature."""
     best = None
     stage_rank = {"shadow": 0, "canary": 1, "preferred": 2, "pinned": 3}
@@ -70,10 +72,16 @@ class ImprintHandler(BaseHTTPRequestHandler):
 
         if skill is None or row["stage"] == "shadow":
             # shadow mode never serves; always escalate
-            payload = render_response(fmt, "", rec["model"] or "imprint",
-                                      {"X-Imprint-Signature": row["signature_id"] if row else "",
-                                       "X-Imprint-Version": skill.prompt_hash if skill else "",
-                                       "X-Imprint-Escalate": "true"})
+            payload = render_response(
+                fmt,
+                "",
+                rec["model"] or "imprint",
+                {
+                    "X-Imprint-Signature": row["signature_id"] if row else "",
+                    "X-Imprint-Version": skill.prompt_hash if skill else "",
+                    "X-Imprint-Escalate": "true",
+                },
+            )
             self._json(200, payload)
             return
 
@@ -109,13 +117,15 @@ class ImprintHandler(BaseHTTPRequestHandler):
 
 
 def serve(db_path: str = "data/imprint.db", port: int = DEFAULT_PORT):
-    handler = type("BoundHandler", (ImprintHandler,),
-                   {"db_path": db_path})
-    print(f"imprint-local listening on :{port} (model-agnostic: openai|anthropic|gemini|raw)")
+    handler = type("BoundHandler", (ImprintHandler,), {"db_path": db_path})
+    print(
+        f"imprint-local listening on :{port} (model-agnostic: openai|anthropic|gemini|raw)"
+    )
     HTTPServer(("127.0.0.1", port), handler).serve_forever()
 
 
 if __name__ == "__main__":
     import sys
+
     port = int(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_PORT
     serve(port=port)

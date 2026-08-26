@@ -4,6 +4,7 @@ Phase 0: manual prompts with hash versioning for clean A/B in the ladder.
 Phase 1: automated evolution (DSPy-backed). Prompt-plateau heuristic:
 3 consecutive evolutions yielding <5% improvement -> flag for v2 distillation.
 """
+
 from dataclasses import dataclass, field
 import hashlib
 import json
@@ -33,6 +34,7 @@ class EvolvedPrompt:
 @dataclass
 class EvolutionTracker:
     """Tracks improvement deltas to detect plateau -> flag for v2 distillation."""
+
     signature_id: str
     improvements: list = field(default_factory=list)  # fractional cost deltas
 
@@ -42,4 +44,3 @@ class EvolutionTracker:
         if len(tail) == PLATEAU_WINDOW and all(d < PLATEAU_THRESHOLD for d in tail):
             return True  # plateaued: escalate to distiller queue (v2)
         return False
-

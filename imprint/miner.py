@@ -4,6 +4,7 @@ Phase 0: deterministic prefix heuristic (no ML deps required).
 Phase 1+: local embeddings (BAAI/bge-small-en) + cosine-threshold clustering.
 Ranking is economics-first: priority = volume_7d x avg_cost x cache_miss_ratio.
 """
+
 import hashlib
 import json
 
@@ -16,8 +17,7 @@ MIN_VOLUME_PER_WEEK = 100  # training refusal threshold
 def _prefix_key(prompt: str, words: int = 8) -> str:
     """Cheap deterministic clustering key: first N content words.
     Pure numbers are dropped so '...for region 3' and '...for region 7' cluster."""
-    tokens = [t for t in prompt.lower().split()
-             if not t.lstrip("-+").isdigit()]
+    tokens = [t for t in prompt.lower().split() if not t.lstrip("-+").isdigit()]
     return " ".join(tokens[:words])
 
 
@@ -25,8 +25,9 @@ def _sig_id(key: str) -> str:
     return "sig_" + hashlib.sha256(key.encode()).hexdigest()[:10]
 
 
-def mine(db_path: str = "data/imprint.db", min_volume: int = 5,
-         use_embeddings: bool = False) -> list[dict]:
+def mine(
+    db_path: str = "data/imprint.db", min_volume: int = 5, use_embeddings: bool = False
+) -> list[dict]:
     """Cluster unassigned pairs into signatures; persist and return ranked rows."""
     conn = connect(db_path)
     week_ago = now_ms() - WEEK_MS
@@ -55,17 +56,32 @@ def mine(db_path: str = "data/imprint.db", min_volume: int = 5,
             " ON CONFLICT(id) DO UPDATE SET volume_7d=?, avg_cost_usd=?,"
             " priority_score=?, status=?, updated_at=?",
             (
-                sig_id, json.dumps({"prefix": key}),
+                sig_id,
+                json.dumps({"prefix": key}),
                 json.dumps([i["id"] for i in items[:50]]),
-                volume_week, avg_cost, priority, status, now_ms(), now_ms(),
-                volume_week, avg_cost, priority, status, now_ms(),
+                volume_week,
+                avg_cost,
+                priority,
+                status,
+                now_ms(),
+                now_ms(),
+                volume_week,
+                avg_cost,
+                priority,
+                status,
+                now_ms(),
             ),
         )
-        ranked.append({
-            "signature_id": sig_id, "prefix": key, "volume_week": volume_week,
-            "avg_cost_usd": round(avg_cost, 6), "priority": round(priority, 4),
-            "status": status,
-        })
+        ranked.append(
+            {
+                "signature_id": sig_id,
+                "prefix": key,
+                "volume_week": volume_week,
+                "avg_cost_usd": round(avg_cost, 6),
+                "priority": round(priority, 4),
+                "status": status,
+            }
+        )
 
     # assign signature_id back onto pairs
     for key, items in groups.items():

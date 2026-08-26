@@ -6,8 +6,11 @@ from imprint.skills import Skill
 
 
 def _base_skill():
-    return Skill(signature_id="s1", template="Summarize the input text.",
-                 few_shot_pack=[{"input": "sales rose", "output": "Sales up."}])
+    return Skill(
+        signature_id="s1",
+        template="Summarize the input text.",
+        few_shot_pack=[{"input": "sales rose", "output": "Sales up."}],
+    )
 
 
 def test_propose_add_constraint_extends_template():
@@ -19,8 +22,9 @@ def test_propose_add_constraint_extends_template():
 
 def test_propose_add_example_grows_shots():
     pool = [{"input": "profit fell", "output": "Profit down."}]
-    child = propose_variant(_base_skill(), "add_example", random.Random(0),
-                            candidate_shots=pool)
+    child = propose_variant(
+        _base_skill(), "add_example", random.Random(0), candidate_shots=pool
+    )
     assert len(child.few_shot_pack) >= len(_base_skill().few_shot_pack)
 
 
@@ -33,8 +37,12 @@ def test_evolver_keeps_cheaper_non_regressing_child():
     def cost_fn(prompt):
         return len(prompt)
 
-    base = Skill(signature_id="s", template="Summarize the sales numbers in the report.")
-    held_out = [{"prompt": f"report {i}: revenue grew", "response": ""} for i in range(5)]
+    base = Skill(
+        signature_id="s", template="Summarize the sales numbers in the report."
+    )
+    held_out = [
+        {"prompt": f"report {i}: revenue grew", "response": ""} for i in range(5)
+    ]
 
     e = Evolver(gate=EvalGate(agreement_threshold=0.2), cost_fn=cost_fn)
     best, history = e.run(base, held_out, execute, max_generations=3)
@@ -64,6 +72,7 @@ def test_evolver_discards_expensive_children():
 
 def test_evolver_discards_noop_mutations():
     """add_example with an empty shot pool produces an identical child -> discarded."""
+
     def execute(rendered, original):
         return "out"
 
