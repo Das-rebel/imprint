@@ -1,12 +1,12 @@
 from imprint.adapters import detect_format, normalize_record, render_response
 
 
-def test_detect_openai():
+def test_detect_openai() -> None:
     rec = {"model": "gpt-4o", "messages": [{"role": "user", "content": "hi"}]}
     assert detect_format(rec) == "openai"
 
 
-def test_detect_anthropic():
+def test_detect_anthropic() -> None:
     rec = {
         "model": "claude-x",
         "system": "be nice",
@@ -18,12 +18,12 @@ def test_detect_anthropic():
     assert detect_format(rec) == "anthropic"
 
 
-def test_detect_gemini():
+def test_detect_gemini() -> None:
     rec = {"contents": [{"role": "user", "parts": [{"text": "hi"}]}]}
     assert detect_format(rec) == "gemini"
 
 
-def test_normalize_openai_messages_flatten():
+def test_normalize_openai_messages_flatten() -> None:
     rec = {
         "model": "gpt-4o",
         "messages": [
@@ -34,6 +34,7 @@ def test_normalize_openai_messages_flatten():
         "usage": {"total_cost": 0.01},
     }
     pair = normalize_record(rec)
+    assert pair is not None
     assert "system: You help." in pair["prompt"]
     assert "user: Summarize this" in pair["prompt"]
     assert pair["response"] == "Sure thing"
@@ -41,7 +42,7 @@ def test_normalize_openai_messages_flatten():
     assert pair["fmt"] == "openai"
 
 
-def test_normalize_anthropic_content_parts():
+def test_normalize_anthropic_content_parts() -> None:
     rec = {
         "model": "claude-x",
         "system": "s",
@@ -51,16 +52,17 @@ def test_normalize_anthropic_content_parts():
         "response": "ok",
     }
     pair = normalize_record(rec)
-    assert "describe" in pair["prompt"]
+    assert pair is not None and "describe" in pair["prompt"]
 
 
-def test_redaction_applies_to_prompts():
+def test_redaction_applies_to_prompts() -> None:
     from imprint.collector import ingest_record
 
     # redaction happens at collector layer; adapter output feeds it
     rec = {"prompt": "email me at bob@x.com", "response": "ok"}
     # redaction is applied inside normalize_record (single ingress path)
-    assert "[EMAIL]" in normalize_record(rec)["prompt"]
+    rec2 = normalize_record(rec)
+    assert rec2 is not None and "[EMAIL]" in rec2["prompt"]
     import tempfile
     import os
     from imprint.store import connect
@@ -69,11 +71,11 @@ def test_redaction_applies_to_prompts():
     conn = connect(db)
     kind, _ = ingest_record(conn, rec)
     row = conn.execute("SELECT prompt FROM pairs").fetchone()
-    assert "[EMAIL]" in row["prompt"]
+    assert row is not None and "[EMAIL]" in row["prompt"]
     os.remove(db)
 
 
-def test_render_response_each_format():
+def test_render_response_each_format() -> None:
     hdr = {
         "X-Imprint-Signature": "sig_1",
         "X-Imprint-Version": "abc123",

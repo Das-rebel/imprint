@@ -1,14 +1,17 @@
 """Skills registry: versioned prompt artifacts per signature."""
 
+from __future__ import annotations
+
 import json
 import sqlite3
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
 from .store import now_ms
+from .ladder import SkillLadder
 
 
-def prompt_hash(text: str, shots: list | None = None) -> str:
+def prompt_hash(text: str, shots: Any = None) -> str:
     import hashlib
 
     return hashlib.sha256((text + json.dumps(shots or [])).encode()).hexdigest()[:12]
@@ -18,14 +21,14 @@ def prompt_hash(text: str, shots: list | None = None) -> str:
 class Skill:
     signature_id: str
     template: str
-    few_shot_pack: list = field(default_factory=list)
+    few_shot_pack: list[dict[str, str]] = field(default_factory=list)
     id: Optional[int] = None
     version: int = 1
     prompt_hash: str = ""
     parent_hash: Optional[str] = None
     stage: str = "shadow"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.prompt_hash = prompt_hash(self.template, self.few_shot_pack)
 
     def render(self, prompt: str) -> str:
@@ -57,7 +60,7 @@ def save_skill(conn: sqlite3.Connection, skill: Skill) -> int:
         ),
     )
     conn.commit()
-    return cur.lastrowid
+    return cur.lastrowid or 0
 
 
 def get_active_skills(conn: sqlite3.Connection, stage: str) -> list[sqlite3.Row]:
@@ -66,7 +69,7 @@ def get_active_skills(conn: sqlite3.Connection, stage: str) -> list[sqlite3.Row]
     ).fetchall()
 
 
-def load_ladder_state(conn: sqlite3.Connection, skill_row: sqlite3.Row):
+def load_ladder_state(conn: sqlite3.Connection, skill_row: sqlite3.Row) -> SkillLadder:
     """Rehydrate a SkillLadder from a skills row."""
     from .ladder import Stage, SkillLadder
 
@@ -81,7 +84,7 @@ def load_ladder_state(conn: sqlite3.Connection, skill_row: sqlite3.Row):
     return ladder
 
 
-def update_ladder_stats(conn: sqlite3.Connection, skill_id: int, ladder) -> None:
+def update_ladder_stats(conn: sqlite3.Connection, skill_id: int, ladder: SkillLadder) -> None:
     conn.execute(
         "UPDATE skills SET stage=?, samples=?, regressions=?,"
         " cost_saved_usd=?, baseline_cost_usd=?, updated_at=? WHERE id=?",

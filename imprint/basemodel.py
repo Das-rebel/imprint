@@ -118,7 +118,7 @@ class Hardware:
 def detect_hardware() -> Hardware:
     # NVIDIA via torch (optional dep)
     try:
-        import torch  # type: ignore
+        import torch
 
         if torch.cuda.is_available():
             props = torch.cuda.get_device_properties(0)

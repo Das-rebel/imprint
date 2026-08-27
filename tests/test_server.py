@@ -8,7 +8,7 @@ from imprint.skills import Skill, save_skill
 from imprint.store import connect
 
 
-def test_skill_save_and_load_roundtrip():
+def test_skill_save_and_load_roundtrip() -> None:
     db = tempfile.mktemp(suffix=".db")
     conn = connect(db)
     s = Skill(
@@ -18,12 +18,12 @@ def test_skill_save_and_load_roundtrip():
     )
     sid = save_skill(conn, s)
     row = conn.execute("SELECT * FROM skills WHERE id=?", (sid,)).fetchone()
-    assert row["prompt_hash"] == s.prompt_hash
+    assert row is not None and row["prompt_hash"] == s.prompt_hash
     assert json.loads(row["few_shot_json"]) == s.few_shot_pack
     os.remove(db)
 
 
-def test_find_skill_prefers_highest_stage():
+def test_find_skill_prefers_highest_stage() -> None:
     db = tempfile.mktemp(suffix=".db")
     conn = connect(db)
     save_skill(conn, Skill(signature_id="s1", template="shadow one"))
@@ -32,5 +32,5 @@ def test_find_skill_prefers_highest_stage():
     from imprint.server import _find_skill
 
     skill, row = _find_skill(conn, "anything", lambda p, s: True)
-    assert row["stage"] == "preferred"
+    assert row is not None and row["stage"] == "preferred"
     os.remove(db)

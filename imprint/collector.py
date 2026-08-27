@@ -7,6 +7,7 @@ Gemini-style contents, raw prompt/completion, and router JSONL exports
 
 import json
 import sys
+from typing import Any
 
 import hashlib
 import sqlite3
@@ -23,7 +24,7 @@ def pair_id(prompt: str) -> str:
     return hashlib.sha256(prompt.encode()).hexdigest()[:16]
 
 
-def ingest_record(conn: sqlite3.Connection, record: dict) -> tuple[str, int]:
+def ingest_record(conn: sqlite3.Connection, record: dict[str, Any]) -> tuple[str, int]:
     """Returns ("inserted"|"duplicate"|"skipped", count=1)."""
     rec = normalize_record(record)
     if rec is None:
@@ -50,7 +51,7 @@ def ingest_record(conn: sqlite3.Connection, record: dict) -> tuple[str, int]:
         return "duplicate", 0
 
 
-def run(input_path: str, db_path: str = "data/imprint.db") -> dict:
+def run(input_path: str, db_path: str = "data/imprint.db") -> dict[str, Any]:
     conn = connect(db_path)
     stats = {"inserted": 0, "duplicate": 0, "skipped": 0}
     with open(input_path) as f:

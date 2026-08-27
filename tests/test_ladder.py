@@ -1,7 +1,7 @@
 from imprint.ladder import SkillLadder, Stage
 
 
-def test_shadow_promotes_to_canary():
+def test_shadow_promotes_to_canary() -> None:
     lad = SkillLadder(
         signature_id="sig1",
         samples=100,
@@ -12,7 +12,7 @@ def test_shadow_promotes_to_canary():
     assert lad.evaluate() == Stage.CANARY
 
 
-def test_insufficient_samples_blocks_promotion():
+def test_insufficient_samples_blocks_promotion() -> None:
     lad = SkillLadder(
         signature_id="sig2",
         samples=10,
@@ -23,7 +23,7 @@ def test_insufficient_samples_blocks_promotion():
     assert lad.evaluate() is None
 
 
-def test_regression_blocks_promotion():
+def test_regression_blocks_promotion() -> None:
     lad = SkillLadder(
         signature_id="sig3",
         samples=100,
@@ -34,11 +34,11 @@ def test_regression_blocks_promotion():
     assert lad.evaluate() is None
 
 
-def test_demote_steps_back_one_stage():
+def test_demote_steps_back_one_stage() -> None:
     lad = SkillLadder(signature_id="sig4", stage=Stage.PREFERRED)
     assert lad.demote("drift detected") == Stage.CANARY
 
 
-def test_pinned_is_terminal():
+def test_pinned_is_terminal() -> None:
     lad = SkillLadder(signature_id="sig5", stage=Stage.PINNED)
     assert lad.evaluate() is None

@@ -13,10 +13,10 @@ class EvalResult:
     programmatic_ok: bool
     agreement: float  # cosine-ish similarity vs baseline output (0..1)
     regression_suspected: bool
-    notes: list = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
 
-def _token_set(text: str) -> set:
+def _token_set(text: str) -> set[str]:
     return {t for t in text.lower().split() if len(t) > 2}
 
 
@@ -32,9 +32,9 @@ def programmatic_checks(
     output: str,
     min_len: int = 1,
     max_len: int = 20000,
-    must_not_contain: tuple = ("[EMAIL]", "[CARD]", "[KEY]"),
-) -> tuple[bool, list]:
-    notes = []
+    must_not_contain: tuple[str, ...] = ("[EMAIL]", "[CARD]", "[KEY]"),
+) -> tuple[bool, list[str]]:
+    notes: list[str] = []
     if not output or len(output) < min_len:
         return False, ["output empty or too short"]
     if len(output) > max_len:
@@ -47,7 +47,7 @@ def programmatic_checks(
 
 class EvalGate:
     def __init__(
-        self, agreement_threshold: float = 0.55, judge_fn: Optional[Callable] = None
+        self, agreement_threshold: float = 0.55, judge_fn: Optional[Callable[..., bool]] = None
     ):
         self.agreement_threshold = agreement_threshold
         self.judge_fn = judge_fn  # optional: (prompt, baseline, candidate) -> bool

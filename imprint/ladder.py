@@ -6,6 +6,7 @@ Exit criteria per stage are enforced in code (ADR-003).
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from typing import Any
 
 
 class Stage(Enum):
@@ -49,7 +50,7 @@ class SkillLadder:
     regressions: int = 0
     cost_saved_usd: float = 0.0
     baseline_cost_usd: float = 0.0
-    history: list = field(default_factory=list)
+    history: list[dict[str, Any]] = field(default_factory=list)
 
     def evaluate(self) -> Stage | None:
         """Check promotion criteria; return next stage if earned."""

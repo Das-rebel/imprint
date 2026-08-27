@@ -7,6 +7,7 @@ Ranking is economics-first: priority = volume_7d x avg_cost x cache_miss_ratio.
 
 import hashlib
 import json
+from typing import Any
 
 from .store import connect, now_ms
 
@@ -27,7 +28,7 @@ def _sig_id(key: str) -> str:
 
 def mine(
     db_path: str = "data/imprint.db", min_volume: int = 5, use_embeddings: bool = False
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """Cluster unassigned pairs into signatures; persist and return ranked rows."""
     conn = connect(db_path)
     week_ago = now_ms() - WEEK_MS
@@ -36,7 +37,7 @@ def mine(
         (week_ago,),
     ).fetchall()
 
-    groups: dict[str, list] = {}
+    groups: dict[str, list[dict[str, Any]]] = {}
     for r in rows:
         key = _prefix_key(r["prompt"])
         groups.setdefault(key, []).append(r)
@@ -95,7 +96,7 @@ def mine(
     return sorted(ranked, key=lambda r: -r["priority"])
 
 
-def report(db_path: str = "data/imprint.db", top: int = 10) -> list[dict]:
+def report(db_path: str = "data/imprint.db", top: int = 10) -> list[dict[str, Any]]:
     ranked = mine(db_path)
     for r in ranked[:top]:
         print(

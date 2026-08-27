@@ -12,7 +12,7 @@ import sys
 from .store import connect
 
 
-def cmd_collect(args):
+def cmd_collect(args: list[str]) -> int:
     from .collector import run
 
     if not args:
@@ -22,14 +22,14 @@ def cmd_collect(args):
     return 0
 
 
-def cmd_mine(args):
+def cmd_mine(args: list[str]) -> int:
     from .miner import report
 
     report()
     return 0
 
 
-def cmd_status(args):
+def cmd_status(args: list[str]) -> int:
     conn = connect()
     sigs = conn.execute(
         "SELECT id, volume_7d, avg_cost_usd, priority_score, status"
@@ -55,7 +55,7 @@ def cmd_status(args):
     return 0
 
 
-def cmd_bases(args):
+def cmd_bases(args: list[str]) -> int:
     from .basemodel import detect_hardware, select_base
 
     hw = detect_hardware()
@@ -74,7 +74,7 @@ def cmd_bases(args):
     return 0
 
 
-def cmd_serve(args):
+def cmd_serve(args: list[str]) -> int:
     from .server import serve
 
     port = int(args[0]) if args else None
@@ -91,7 +91,7 @@ COMMANDS = {
 }
 
 
-def main():
+def main() -> int:
     if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
         print(__doc__)
         return 1

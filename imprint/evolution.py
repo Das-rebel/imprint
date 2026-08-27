@@ -13,9 +13,11 @@ Loop:
 
 from __future__ import annotations
 
+__all__ = ["Evolver", "EvolutionTracker", "propose_variant"]
+
 import random
 from dataclasses import dataclass, field
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from .evalgate import EvalGate
 from .evolver import EvolutionTracker  # noqa: F401 (re-export)
@@ -42,7 +44,7 @@ def propose_variant(
     base: Skill,
     strategy: str,
     rng: Optional[random.Random] = None,
-    candidate_shots: Optional[list] = None,
+    candidate_shots: Optional[list[dict[str, Any]]] = None,
 ) -> Skill:
     """Create a mutated child of `base`. Pure function; no I/O."""
     rng = rng or random.Random()
@@ -83,7 +85,7 @@ class EvolutionStep:
     avg_agreement: float
     avg_cost_delta: float  # negative = cheaper
     kept: bool
-    notes: list = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
 
 class Evolver:
@@ -103,7 +105,7 @@ class Evolver:
         self,
         base: Skill,
         child: Skill,
-        held_out: list[dict],
+        held_out: list[dict[str, Any]],
         execute: Callable[[str, str], str],
     ) -> EvolutionStep:
         """execute(rendered_prompt, original_prompt) -> model output."""
@@ -155,9 +157,9 @@ class Evolver:
     def run(
         self,
         base: Skill,
-        held_out: list[dict],
+        held_out: list[dict[str, Any]],
         execute: Callable[[str, str], str],
-        candidate_shots: Optional[list] = None,
+        candidate_shots: Optional[list[dict[str, Any]]] = None,
         max_generations: int = 5,
     ) -> tuple[Skill, list[EvolutionStep]]:
         """Evolve until plateau or budget. Returns best skill + step log."""

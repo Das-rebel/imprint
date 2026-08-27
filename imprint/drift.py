@@ -9,7 +9,7 @@ class DriftVerdict:
     drifted: bool
     kind: str = ""  # input|outcome|cost
     detail: str = ""
-    notes: list = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
 
 class InputDriftMonitor:
@@ -19,12 +19,12 @@ class InputDriftMonitor:
     in Phase 1 (mean cosine distance > 2 sigma -> drift).
     """
 
-    def __init__(self, reference_prompts: list[str], threshold_sigma: float = 2.0):
+    def __init__(self, reference_prompts: list[str], threshold_sigma: float = 2.0) -> None:
         self.references = [self._token_set(p) for p in reference_prompts]
         self.threshold_sigma = threshold_sigma
 
     @staticmethod
-    def _token_set(text: str) -> set:
+    def _token_set(text: str) -> set[str]:
         return {t for t in text.lower().split() if len(t) > 2}
 
     def check(self, recent_prompts: list[str]) -> DriftVerdict:
@@ -32,7 +32,7 @@ class InputDriftMonitor:
             return DriftVerdict(drifted=False)
         recent_sets = [self._token_set(p) for p in recent_prompts]
 
-        def dist(a: set, b: set) -> float:
+        def dist(a: set[str], b: set[str]) -> float:
             union = a | b
             return 1 - (len(a & b) / len(union)) if union else 1.0
 

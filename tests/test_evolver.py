@@ -1,7 +1,7 @@
 from imprint.evolver import EvolutionTracker, EvolvedPrompt, prompt_hash
 
 
-def test_plateau_detected_after_three_flat_evolutions():
+def test_plateau_detected_after_three_flat_evolutions() -> None:
     t = EvolutionTracker(signature_id="s")
     plateaued = False
     for _ in range(3):
@@ -9,7 +9,7 @@ def test_plateau_detected_after_three_flat_evolutions():
     assert plateaued is True
 
 
-def test_no_plateau_with_real_improvements():
+def test_no_plateau_with_real_improvements() -> None:
     t = EvolutionTracker(signature_id="s")
     plateaued = False
     for d in (0.4, 0.3, 0.2):
@@ -17,6 +17,6 @@ def test_no_plateau_with_real_improvements():
     assert plateaued is False
 
 
-def test_prompt_hash_stable():
+def test_prompt_hash_stable() -> None:
     p = EvolvedPrompt(signature_id="s", version=1, template="hello")
     assert p.hash == prompt_hash("hello" + "[]")

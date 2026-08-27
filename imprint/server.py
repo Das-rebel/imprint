@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any, Callable
 
 from .adapters import detect_format, normalize_record, render_response
 from .evalgate import EvalGate
@@ -24,7 +25,7 @@ CONFIDENCE_THRESHOLD = 0.55
 
 
 def _find_skill(
-    conn: sqlite3.Connection, prompt: str, match_fn
+    conn: sqlite3.Connection, prompt: str, match_fn: Callable[[str, Skill], bool]
 ) -> tuple[Skill | None, sqlite3.Row | None]:
     """Find the highest-stage active skill whose template matches the signature."""
     best = None
@@ -52,7 +53,7 @@ class ImprintHandler(BaseHTTPRequestHandler):
     db_path: str = "data/imprint.db"
     matcher = staticmethod(lambda prompt, skill: True)  # pluggable matching
 
-    def do_POST(self):  # noqa: N802
+    def do_POST(self) -> None:  # noqa: N802
         length = int(self.headers.get("Content-Length", 0))
         try:
             body = json.loads(self.rfile.read(length))
@@ -70,7 +71,7 @@ class ImprintHandler(BaseHTTPRequestHandler):
         conn.row_factory = sqlite3.Row
         skill, row = _find_skill(conn, rec["prompt"], self.matcher)
 
-        if skill is None or row["stage"] == "shadow":
+        if skill is None or (row is not None and row["stage"] == "shadow"):
             # shadow mode never serves; always escalate
             payload = render_response(
                 fmt,
@@ -92,8 +93,10 @@ class ImprintHandler(BaseHTTPRequestHandler):
         escalate = not result.passed or result.agreement < CONFIDENCE_THRESHOLD
 
         rendered = skill.render(rec["prompt"])
+        assert row is not None
         headers = {
             "X-Imprint-Signature": row["signature_id"],
+
             "X-Imprint-Version": skill.prompt_hash,
             "X-Imprint-Escalate": "true" if escalate else "false",
         }
@@ -101,7 +104,7 @@ class ImprintHandler(BaseHTTPRequestHandler):
         payload.setdefault("imprint", {})["escalate"] = escalate
         self._json(200, payload, headers)
 
-    def _json(self, code: int, obj: dict, extra_headers: dict | None = None):
+    def _json(self, code: int, obj: dict[str, Any], extra_headers: dict[str, str] | None = None) -> None:
         data = json.dumps(obj).encode()
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
@@ -112,11 +115,11 @@ class ImprintHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def log_message(self, *args):  # quiet
+    def log_message(self, *args: Any) -> None:  # quiet
         pass
 
 
-def serve(db_path: str = "data/imprint.db", port: int = DEFAULT_PORT):
+def serve(db_path: str = "data/imprint.db", port: int = DEFAULT_PORT) -> None:
     handler = type("BoundHandler", (ImprintHandler,), {"db_path": db_path})
     print(
         f"imprint-local listening on :{port} (model-agnostic: openai|anthropic|gemini|raw)"

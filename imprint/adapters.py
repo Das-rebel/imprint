@@ -49,7 +49,7 @@ def _flatten_content(content: Any) -> str:
     return str(content)
 
 
-def _messages_to_prompt(messages: list[dict]) -> str:
+def _messages_to_prompt(messages: list[dict[str, Any]]) -> str:
     """Flatten a role/content message list into one transcript string."""
     lines = []
     for m in messages or []:
@@ -60,7 +60,7 @@ def _messages_to_prompt(messages: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def detect_format(record: dict) -> str:
+def detect_format(record: dict[str, Any]) -> str:
     if isinstance(record.get("messages"), list):
         if record.get("system") is not None and any(
             m.get("role") == "assistant" for m in record["messages"]
@@ -79,13 +79,13 @@ def detect_format(record: dict) -> str:
 
 
 def render_response(
-    fmt: str, text: str, model: str, extra_headers: Optional[dict] = None
-) -> dict:
+    fmt: str, text: str, model: str, extra_headers: Optional[dict[str, Any]] = None
+) -> dict[str, Any]:
     """Wrap `text` back into the caller's native response shape."""
     meta = {
-        "imprint_signature": extra_headers.get("X-Imprint-Signature"),
-        "imprint_version": extra_headers.get("X-Imprint-Version"),
-        "imprint_escalate": extra_headers.get("X-Imprint-Escalate") == "true",
+        "imprint_signature": extra_headers.get("X-Imprint-Signature") if extra_headers else None,
+        "imprint_version": extra_headers.get("X-Imprint-Version") if extra_headers else None,
+        "imprint_escalate": (extra_headers.get("X-Imprint-Escalate") == "true") if extra_headers else False,
     }
     if fmt == "openai":
         return {
@@ -132,7 +132,7 @@ def render_response(
 # --------------------------------------------------------------- ingress ----
 
 
-def normalize_record(record: dict) -> Optional[dict]:
+def normalize_record(record: dict[str, Any]) -> Optional[dict[str, Any]]:
     """Normalize any supported log/request shape into an Imprint pair dict.
 
     Returns keys: prompt, response, model, provider (+ passthrough economics).
@@ -141,7 +141,7 @@ def normalize_record(record: dict) -> Optional[dict]:
     fmt = detect_format(record)
 
     if fmt == "openai" or fmt == "anthropic":
-        prompt = _messages_to_prompt(record.get("messages"))
+        prompt = _messages_to_prompt(record.get("messages") or [])
         response = _flatten_content(
             (record.get("response_body") or {}).get("content")
             if isinstance(record.get("response_body"), dict)

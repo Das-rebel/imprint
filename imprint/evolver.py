@@ -6,6 +6,7 @@ Phase 1: automated evolution (DSPy-backed). Prompt-plateau heuristic:
 """
 
 from dataclasses import dataclass, field
+from typing import Any
 import hashlib
 import json
 
@@ -23,7 +24,7 @@ class EvolvedPrompt:
     signature_id: str
     version: int
     template: str
-    few_shot_pack: list = field(default_factory=list)
+    few_shot_pack: list[dict[str, Any]] = field(default_factory=list)
     parent_hash: str | None = None
 
     @property
@@ -36,7 +37,7 @@ class EvolutionTracker:
     """Tracks improvement deltas to detect plateau -> flag for v2 distillation."""
 
     signature_id: str
-    improvements: list = field(default_factory=list)  # fractional cost deltas
+    improvements: list[float] = field(default_factory=list)  # fractional cost deltas
 
     def record(self, cost_delta: float) -> bool:
         self.improvements.append(cost_delta)
