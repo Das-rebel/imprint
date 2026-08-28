@@ -1,6 +1,5 @@
 import random
 
-from typing import Callable
 from imprint.evolution import EvolutionTracker, Evolver, propose_variant
 from imprint.evalgate import EvalGate
 from imprint.skills import Skill
