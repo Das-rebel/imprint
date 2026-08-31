@@ -99,8 +99,8 @@ class PromptCompressor:
         if target_token_num is None:
             target_token_num = min(int(original_tokens * ratio), budget)
 
-        # Don't compress if already short enough
-        if original_tokens <= target_token_num:
+        # Don't compress if already below budget threshold
+        if original_tokens <= budget:
             return CompressionResult(
                 original=prompt,
                 compressed=prompt,
