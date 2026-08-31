@@ -89,3 +89,101 @@ def test_render_response_each_format() -> None:
     assert g["candidates"][0]["content"]["parts"][0]["text"] == "hi"
     r = render_response("raw", "hi", "m", hdr)
     assert r["response"] == "hi"
+
+
+def test_detect_format_unknown_returns_unknown() -> None:
+    assert detect_format({}) == "unknown"
+    assert detect_format({"foo": "bar", "baz": 123}) == "unknown"
+
+
+def test_detect_format_edge_case_empty_messages() -> None:
+    assert detect_format({"messages": []}) == "openai"
+    assert detect_format({"contents": []}) == "gemini"
+
+
+def test_detect_format_anthropic_without_system() -> None:
+    rec = {"model": "claude-x", "messages": [{"role": "user", "content": "hi"}]}
+    assert detect_format(rec) == "openai"
+
+
+def test_render_response_unknown_format_falls_through() -> None:
+    r = render_response("unknown_format", "hello", "m", None)
+    assert r["response"] == "hello"
+    assert "imprint_signature" not in r
+
+
+def test_render_response_without_extra_headers() -> None:
+    o = render_response("openai", "hi", "m", None)
+    assert "imprint_signature" not in o
+
+
+def test_normalize_record_empty_prompt_returns_none() -> None:
+    rec = {"prompt": "   ", "response": "some response"}
+    assert normalize_record(rec) is None
+
+
+def test_normalize_record_raw_format_completion_key() -> None:
+    rec = {"prompt": "test prompt", "completion": "the response", "model": "gpt-4o", "cost_usd": 0.02}
+    pair = normalize_record(rec)
+    assert pair is not None
+    assert pair["response"] == "the response"
+    assert pair["fmt"] == "raw"
+
+
+def test_normalize_record_gemini_format() -> None:
+    rec = {
+        "model": "gemini-2.0-flash",
+        "contents": [
+            {"role": "user", "parts": [{"text": "hello"}]},
+            {"role": "model", "parts": [{"text": "hi there"}]},
+        ],
+        "response": "gemini response text",
+    }
+    pair = normalize_record(rec)
+    assert pair is not None
+    assert "user: hello" in pair["prompt"]
+    assert "model: hi there" in pair["prompt"]
+    assert pair["response"] == "gemini response text"
+    assert pair["fmt"] == "gemini"
+
+
+def test_normalize_record_missing_cost_uses_zero() -> None:
+    rec = {"prompt": "test", "response": "resp", "model": "gpt-4o"}
+    pair = normalize_record(rec)
+    assert pair is not None
+    assert pair["cost_usd"] == 0.0
+
+
+def test_normalize_record_usage_total_cost() -> None:
+    rec = {"prompt": "test", "response": "resp", "model": "gpt-4o", "usage": {"total_cost": 0.05}}
+    pair = normalize_record(rec)
+    assert pair is not None
+    assert pair["cost_usd"] == 0.05
+
+
+def test_redact_api_keys() -> None:
+    rec = {"prompt": "use key sk-abc123defghijklmnopqrst for auth", "response": "done"}
+    pair = normalize_record(rec)
+    assert pair is not None
+    assert "[KEY]" in pair["prompt"]
+    assert "sk-" not in pair["prompt"]
+
+
+def test_redact_credit_card() -> None:
+    rec = {"prompt": "card number is 4111-1111-1111-1111", "response": "ok"}
+    pair = normalize_record(rec)
+    assert pair is not None
+    assert "[CARD]" in pair["prompt"]
+
+
+def test_flatten_content_nested_parts() -> None:
+    from imprint.adapters import _flatten_content
+    content = [{"type": "text", "text": "hello"}, {"type": "image_url", "url": "https://..."}]
+    result = _flatten_content(content)
+    assert result == "hello"
+
+
+def test_flatten_content_string_passthrough() -> None:
+    from imprint.adapters import _flatten_content
+    assert _flatten_content("plain string") == "plain string"
+    assert _flatten_content(None) == ""
