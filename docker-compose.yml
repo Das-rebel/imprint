@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  imprint:
+    build: .
+    ports:
+      - "8477:8477"
+    volumes:
+      - imprint-data:/app/data
+    environment:
+      - IMPRINT_DB_PATH=/app/data/imprint.db
+
+  # Optional: ngrok for public access
+  # ngrok:
+  #   image: ngrok/ngrok:latest
+  #   ports:
+  #     - "4040:4040"
+  #   command: http imprint:8477
+  #   depends_on:
+  #     - imprint
+
+volumes:
+  imprint-data:

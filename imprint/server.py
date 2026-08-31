@@ -126,9 +126,9 @@ class ImprintHandler(BaseHTTPRequestHandler):
 def serve(db_path: str = "data/imprint.db", port: int = DEFAULT_PORT) -> None:
     handler = type("BoundHandler", (ImprintHandler,), {"db_path": db_path})
     print(
-        f"imprint-local listening on :{port} (model-agnostic: openai|anthropic|gemini|raw)"
+        f"imprint listening on 0.0.0.0:{port} (model-agnostic: openai|anthropic|gemini|raw)"
     )
-    HTTPServer(("127.0.0.1", port), handler).serve_forever()
+    HTTPServer(("", port), handler).serve_forever()
 
 
 if __name__ == "__main__":
