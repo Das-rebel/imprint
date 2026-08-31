@@ -53,6 +53,13 @@ class ImprintHandler(BaseHTTPRequestHandler):
     db_path: str = "data/imprint.db"
     matcher = staticmethod(lambda prompt, skill: True)  # pluggable matching
 
+    def do_GET(self) -> None:  # noqa: N802
+        self._json(200, {
+            "status": "ok",
+            "service": "imprint",
+            "version": "0.0.1",
+        })
+
     def do_POST(self) -> None:  # noqa: N802
         length = int(self.headers.get("Content-Length", 0))
         try:
