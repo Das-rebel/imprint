@@ -19,7 +19,9 @@ class InputDriftMonitor:
     in Phase 1 (mean cosine distance > 2 sigma -> drift).
     """
 
-    def __init__(self, reference_prompts: list[str], threshold_sigma: float = 2.0) -> None:
+    def __init__(
+        self, reference_prompts: list[str], threshold_sigma: float = 2.0
+    ) -> None:
         self.references = [self._token_set(p) for p in reference_prompts]
         self.threshold_sigma = threshold_sigma
 

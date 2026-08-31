@@ -84,7 +84,9 @@ def load_ladder_state(conn: sqlite3.Connection, skill_row: sqlite3.Row) -> Skill
     return ladder
 
 
-def update_ladder_stats(conn: sqlite3.Connection, skill_id: int, ladder: SkillLadder) -> None:
+def update_ladder_stats(
+    conn: sqlite3.Connection, skill_id: int, ladder: SkillLadder
+) -> None:
     conn.execute(
         "UPDATE skills SET stage=?, samples=?, regressions=?,"
         " cost_saved_usd=?, baseline_cost_usd=?, updated_at=? WHERE id=?",

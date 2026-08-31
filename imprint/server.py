@@ -96,7 +96,6 @@ class ImprintHandler(BaseHTTPRequestHandler):
         assert row is not None
         headers = {
             "X-Imprint-Signature": row["signature_id"],
-
             "X-Imprint-Version": skill.prompt_hash,
             "X-Imprint-Escalate": "true" if escalate else "false",
         }
@@ -104,7 +103,12 @@ class ImprintHandler(BaseHTTPRequestHandler):
         payload.setdefault("imprint", {})["escalate"] = escalate
         self._json(200, payload, headers)
 
-    def _json(self, code: int, obj: dict[str, Any], extra_headers: dict[str, str] | None = None) -> None:
+    def _json(
+        self,
+        code: int,
+        obj: dict[str, Any],
+        extra_headers: dict[str, str] | None = None,
+    ) -> None:
         data = json.dumps(obj).encode()
         self.send_response(code)
         self.send_header("Content-Type", "application/json")

@@ -83,9 +83,17 @@ def render_response(
 ) -> dict[str, Any]:
     """Wrap `text` back into the caller's native response shape."""
     meta = {
-        "imprint_signature": extra_headers.get("X-Imprint-Signature") if extra_headers else None,
-        "imprint_version": extra_headers.get("X-Imprint-Version") if extra_headers else None,
-        "imprint_escalate": (extra_headers.get("X-Imprint-Escalate") == "true") if extra_headers else False,
+        "imprint_signature": (
+            extra_headers.get("X-Imprint-Signature") if extra_headers else None
+        ),
+        "imprint_version": (
+            extra_headers.get("X-Imprint-Version") if extra_headers else None
+        ),
+        "imprint_escalate": (
+            (extra_headers.get("X-Imprint-Escalate") == "true")
+            if extra_headers
+            else False
+        ),
     }
     if fmt == "openai":
         return {

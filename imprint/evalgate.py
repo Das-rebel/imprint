@@ -47,7 +47,9 @@ def programmatic_checks(
 
 class EvalGate:
     def __init__(
-        self, agreement_threshold: float = 0.55, judge_fn: Optional[Callable[..., bool]] = None
+        self,
+        agreement_threshold: float = 0.55,
+        judge_fn: Optional[Callable[..., bool]] = None,
     ):
         self.agreement_threshold = agreement_threshold
         self.judge_fn = judge_fn  # optional: (prompt, baseline, candidate) -> bool
