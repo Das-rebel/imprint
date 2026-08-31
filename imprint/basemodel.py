@@ -101,6 +101,9 @@ def load_pool(path: Optional[Path] = None) -> list[BaseCandidate]:
     p = path or MODELS_JSON
     if p.exists():
         raw = json.loads(p.read_text())
+        # Support both list format (legacy) and dict format (v4)
+        if isinstance(raw, dict):
+            raw = raw.get("pool", [])
         return [BaseCandidate(**c) for c in raw]
     return DEFAULT_POOL
 
