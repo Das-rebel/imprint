@@ -17,11 +17,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 from collections import defaultdict
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Optional, Any
+from typing import Optional
 
 
 @dataclass
@@ -139,7 +137,6 @@ class PrefixTree:
         node = self._root
         i = 0
         last_value = None
-        last_end = False
 
         while i < len(text):
             char = text[i]
@@ -156,7 +153,6 @@ class PrefixTree:
                     i += len(child.prefix)
                     if child.is_end:
                         last_value = child.value
-                        last_end = True
                     node = child
                     continue
                 elif child.prefix.startswith(text[i:]):
@@ -167,7 +163,6 @@ class PrefixTree:
                     match_len = self._common_prefix_len(child.prefix, text[i:])
                     if match_len > 0 and child.is_end:
                         last_value = child.value
-                        last_end = False
                     break
 
         if last_value is not None:

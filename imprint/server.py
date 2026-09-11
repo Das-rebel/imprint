@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Callable
 
 from .adapters import detect_format, normalize_record, render_response
-from .compressor import AdaptiveCompressor, CompressionResult
+from .compressor import AdaptiveCompressor
 from .evalgate import EvalGate
 from .prefix_tree import PrefixTree
 from .semantic_cache import SemanticCache

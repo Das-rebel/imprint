@@ -14,10 +14,8 @@ Related:
 """
 from __future__ import annotations
 
-import json
 import re
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 
@@ -265,7 +263,7 @@ class PromptCompressor:
         if not text:
             return text
 
-        original_len = len(text)
+        len(text)
         current_tokens = self._count_tokens(text)
 
         # Step 1: Clean whitespace

@@ -34,6 +34,27 @@ CREATE TABLE IF NOT EXISTS signatures (
   updated_at INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS routing_feedback (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts INTEGER,
+  prompt_text TEXT,
+  recommended_tier TEXT,
+  selected_model TEXT,
+  selected_provider TEXT,
+  estimated_cost_usd REAL,
+  actual_cost_usd REAL,
+  latency_ms INTEGER,
+  quality_score REAL DEFAULT NULL,
+  top_k_match_score REAL DEFAULT 0.0,
+  feedback_type TEXT DEFAULT 'auto',  -- auto|manual|review
+  notes TEXT DEFAULT '',
+  signature_id TEXT DEFAULT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_routing_ts ON routing_feedback(ts);
+CREATE INDEX IF NOT EXISTS idx_routing_tier ON routing_feedback(recommended_tier);
+CREATE INDEX IF NOT EXISTS idx_routing_sig ON routing_feedback(signature_id);
+CREATE INDEX IF NOT EXISTS idx_routing_cache ON routing_feedback(top_k_match_score);
+
 CREATE TABLE IF NOT EXISTS skills (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   signature_id TEXT,
