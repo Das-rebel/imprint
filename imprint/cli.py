@@ -628,6 +628,7 @@ COMMANDS = {
     "collect": cmd_collect,
     "mine": cmd_mine,
     "status": cmd_status,
+    "status-verbose": cmd_status,
     "serve": cmd_serve,
     "bases": cmd_bases,
     "route": cmd_route,
