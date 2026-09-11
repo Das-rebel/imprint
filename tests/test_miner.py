@@ -1,9 +1,6 @@
-import json
-import os
-import tempfile
 import time
 
-from imprint.miner import _prefix_key, _sig_id, mine, report
+from imprint.miner import _prefix_key, _sig_id, mine
 from imprint.store import connect
 
 

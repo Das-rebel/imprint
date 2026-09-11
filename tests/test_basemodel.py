@@ -144,7 +144,7 @@ def test_gated_model_blocked_without_opt_in() -> None:
     """Gated models should be excluded when IMPRINT_ALLOW_GATED_MODELS != 1"""
     import os
     os.environ.pop("IMPRINT_ALLOW_GATED_MODELS", None)
-    from imprint.basemodel import select_base, Hardware, SignatureProfile
+    from imprint.basemodel import select_base, Hardware
     
     pool = load_pool()
     gated = [c for c in pool if c.gated]

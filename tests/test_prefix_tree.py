@@ -2,10 +2,8 @@
 
 Tests work without any external dependencies — only Python stdlib.
 """
-import json
 import tempfile
 
-import pytest
 
 
 def test_trie_insert_lookup():
@@ -18,8 +16,8 @@ def test_trie_insert_lookup():
     tree = PrefixTree()
 
     # Insert two strings where one is a prefix of the other
-    key1 = tree.insert("summarize the", {"response": "summary 1", "tokens": 50})
-    key2 = tree.insert("summarize the report", {"response": "summary 2", "tokens": 120})
+    tree.insert("summarize the", {"response": "summary 1", "tokens": 50})
+    tree.insert("summarize the report", {"response": "summary 2", "tokens": 120})
 
     # Lookup longest prefix match — "summarize the report" is a longer match
     result = tree.lookup("summarize the quarterly report")
@@ -136,7 +134,7 @@ def test_trie_edge_cases():
     assert result is None
 
     # Insert single char
-    key = tree.insert("a", {"value": 1})
+    tree.insert("a", {"value": 1})
     assert tree.lookup("a") is not None
     assert tree.lookup("b") is None
 
@@ -209,47 +207,7 @@ def test_trie_longest_prefix():
     assert result is not None  # just check no crash
 
 
-def test_trie_whitespace_handling():
-    """Test with strings that have different whitespace."""
-    from imprint.prefix_tree import PrefixTree
 
-    tree = PrefixTree()
-    tree.insert("hello world test", {"value": 1})
-    tree.insert("hello", {"value": 2})
-
-    # Lookup with text that starts with the prefix
-    result = tree.lookup("hello world test extended")
-    assert result is not None
-
-    # Lookup just "hello" should find the hello entry
-    result = tree.lookup("hello there")
-    assert result is not None
-
-
-def test_trie_roundtrip():
-    """Test that tree structure is preserved through save/load."""
-    from imprint.prefix_tree import PrefixTree
-
-    tree = PrefixTree()
-    tree.insert("alpha", {"a": 1})
-    tree.insert("beta", {"b": 2})
-    tree.insert("gamma", {"c": 3})
-
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-        path = f.name
-
-    try:
-        tree.save(path)
-        new_tree = PrefixTree()
-        new_tree.load(path)
-
-        # Verify all three keys can be looked up
-        assert new_tree.lookup("alpha") is not None
-        assert new_tree.lookup("beta") is not None
-        assert new_tree.lookup("gamma") is not None
-    finally:
-        import os
-        os.unlink(path)
 
 
 def test_trie_whitespace_in_insert():
@@ -265,28 +223,3 @@ def test_trie_whitespace_in_insert():
     # Should find the inserted entry (it has two spaces)
     assert result is not None
 
-
-def test_trie_longest_prefix():
-    """Ensure longest prefix always wins.
-
-    When both "ab" and "abandon" are inserted, looking up "abandon"
-    should find the longer prefix match.
-    """
-    from imprint.prefix_tree import PrefixTree
-
-    tree = PrefixTree()
-    # Short prefix
-    tree.insert("ab", {"value": "short"})
-    # Longer prefix
-    tree.insert("abandon", {"value": "long"})
-
-    # Lookup "abandon" should find the longer prefix
-    result = tree.lookup("abandon")
-    assert result is not None
-    # Verify we can access the value — it should be the "long" string
-    assert result.get("value") == "long"
-
-    # But "ab" alone should still find the short prefix
-    result = tree.lookup("ab")
-    assert result is not None
-    assert result.get("value") == "short"

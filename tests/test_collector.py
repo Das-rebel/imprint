@@ -1,6 +1,4 @@
 import json
-import os
-import tempfile
 import time
 
 from imprint.collector import ingest_record, pair_id, run

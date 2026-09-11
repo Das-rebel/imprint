@@ -141,7 +141,6 @@ def test_propose_variant_all_mutations_deterministic() -> None:
 
 def test_evolver_max_generations_zero() -> None:
     """Zero generations should return base skill unchanged"""
-    import random
     base = Skill(signature_id="s", template="Test.")
     held_out = [{"prompt": "doc", "response": "out"}]
     e = Evolver(cost_fn=lambda p: len(p))
@@ -152,7 +151,6 @@ def test_evolver_max_generations_zero() -> None:
 
 def test_evolver_empty_held_out() -> None:
     """Empty held_out set should still run (evaluates nothing)"""
-    import random
     base = Skill(signature_id="s", template="Test.")
     e = Evolver(cost_fn=lambda p: len(p))
     best, history = e.run(base, [], lambda r, o: r, max_generations=2)

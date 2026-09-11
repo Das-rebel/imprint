@@ -2,11 +2,8 @@
 
 Lightweight tests that work without sentence-transformers installed.
 """
-import json
 import tempfile
-from pathlib import Path
 
-import pytest
 
 
 def test_redact_pii():

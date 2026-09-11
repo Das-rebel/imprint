@@ -2,7 +2,6 @@
 
 Tests work without LLMLingua (uses heuristic fallback).
 """
-import pytest
 
 
 def test_short_prompt_unchanged():
@@ -172,4 +171,4 @@ def test_compression_stats():
     stats = compressor.stats()
     assert stats["total_calls"] == 2
     assert stats["heuristic_calls"] == 1
-    assert stats["llmlingua_available"] == False
+    assert not stats["llmlingua_available"]
