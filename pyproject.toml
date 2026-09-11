@@ -21,6 +21,11 @@ classifiers = [
 Homepage = "https://github.com/Das-rebel/imprint"
 Repository = "https://github.com/Das-rebel/imprint"
 
+[project.dependencies]
+numpy = ">=1.20"
+faiss-cpu = ">=1.7"
+sentence-transformers = ">=2.2"
+
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.4", "mypy>=1.10"]
 
