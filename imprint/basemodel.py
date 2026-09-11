@@ -94,6 +94,7 @@ MLX_SWAPS = {
     "Qwen2.5-3B-Instruct": "mlx-community/Qwen2.5-3B-Instruct-4bit",
     "Qwen2.5-7B-Instruct": "mlx-community/Qwen2.5-7B-Instruct-4bit",
     "Qwen2.5-14B-Instruct": "mlx-community/Qwen2.5-14B-Instruct-4bit",
+    "Phi-4-mini": "mlx-community/Phi-4-mini",
 }
 
 

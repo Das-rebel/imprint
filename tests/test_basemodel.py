@@ -11,7 +11,7 @@ from imprint.basemodel import (
 POOL = load_pool()
 SMALL = POOL[0]
 MEDIUM = POOL[2]
-LARGE = POOL[4]
+LARGE = next(c for c in POOL if c.tier == "large")  # Mistral-Small-3.2-24B
 
 SIGS = [
     SignatureProfile("s1", est_monthly_savings=40),
@@ -29,7 +29,7 @@ def test_nvidia_16gb_filters_large_models() -> None:
     fit, _ = filter_by_hardware(POOL, Hardware("nvidia", 16.0))
     names = {c.name for c in fit}
     assert MEDIUM.name in names
-    assert LARGE.name not in names  # 17GB QLoRA > 16GB budget
+    assert LARGE.name not in names  # 24GB Mistral > 16GB budget (after 30% headroom)
     assert SMALL.name in names
 
 
