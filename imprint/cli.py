@@ -624,6 +624,49 @@ def cmd_phase1_deploy(args: list[str]) -> int:
     return 0
 
 
+def cmd_jev_train(args: list[str]) -> int:
+    """Train the Jev decision head. Uses telemetry when available, else bootstrap."""
+    from .jev import JevHead, bootstrap_rows, telemetry_rows, WEIGHTS_PATH
+
+    db = "data/imprint.db"
+    rows = telemetry_rows(db)
+    mode = "telemetry"
+    if len(rows) < 40:
+        rows = bootstrap_rows()
+        mode = "bootstrap"
+    print(f"training mode: {mode} ({len(rows)} rows)")
+    head = JevHead(dim=64)
+    stats = head.fit(rows, epochs=200, lr=0.5)
+    head.save(WEIGHTS_PATH)
+    print(f"top-1: {stats['top1']:.3f}  temperature: {stats['temperature']:.3f}")
+    print(f"saved: {WEIGHTS_PATH}")
+    return 0
+
+
+def cmd_jev_status(args: list[str]) -> int:
+    """Show Jev head status and a live decision sample."""
+    from .jev import STAGES, get_default_head
+
+    head = get_default_head()
+    if head is None:
+        print("Jev head: NOT LOADED (no weights — run `python -m imprint jev-train`)")
+        return 1
+    print(f"Jev head loaded: dim={head.dim} temperature={head.temperature:.3f}")
+    samples = [
+        "what is the status of the deployment",
+        "You are a senior kotlin architect. Given the following ADR, evaluate: case one",
+        "Explain the history of distributed systems in detail. " * 10,
+        "invent a name for a mars rover",
+    ]
+    for s in samples:
+        d = head.predict(s)
+        probs = " ".join(f"{k}={v:.2f}" for k, v in sorted(d.stage_probs.items(), key=lambda x: -x[1])[:2])
+        print(f"  [{d.stage:>15}] conf={d.confidence:.2f} {probs} cplx={d.complexity:.2f} "
+              f"cache={d.cacheable}({d.cacheable_prob:.2f}) comp={d.compress_safe}({d.compress_safe_prob:.2f}) "
+              f"[{d.elapsed_ms:.1f}ms]  {s[:50]!r}")
+    return 0
+
+
 COMMANDS = {
     "collect": cmd_collect,
     "mine": cmd_mine,
@@ -643,6 +686,8 @@ COMMANDS = {
     "a3m-check": cmd_a3m_check,
     "a3m-route": cmd_a3m_route,
     "auto-learn": cmd_auto_learn,
+    "jev-train": cmd_jev_train,
+    "jev-status": cmd_jev_status,
 }
 
 

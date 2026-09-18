@@ -86,6 +86,16 @@ class ImprintServer:
         self.prefix_tree = PrefixTree()
         self.compressor = AdaptiveCompressor()
 
+        # Jev System One decision head (optional — degrades gracefully).
+        # Disable with IMPRINT_JEV=0.
+        self.jev = None
+        if os.environ.get("IMPRINT_JEV", "1") != "0":
+            try:
+                from .jev import get_default_head
+                self.jev = get_default_head()
+            except Exception:
+                self.jev = None
+
         # Load saved state
         prefix_path = os.path.join(cache_dir, "prefix_tree.json")
         if os.path.exists(prefix_path):
@@ -105,8 +115,27 @@ class ImprintServer:
         prompt = rec["prompt"]
         model = rec["model"] or "imprint"
 
+        # ── 0. Jev System One decision (single pass) ────────────────
+        # Predicts which cascade stage will win + compression safety.
+        # Skips doomed lookups; never *answers* — only gates stages.
+        jev_headers: dict[str, str] = {}
+        jev = self.jev.predict(prompt) if self.jev else None
+        if jev is not None:
+            jev_headers = {
+                "X-Imprint-Jev-Stage": jev.stage,
+                "X-Imprint-Jev-Conf": f"{jev.confidence:.2f}",
+                "X-Imprint-Jev-Cacheable": str(jev.cacheable).lower(),
+                "X-Imprint-Jev-Compress-Safe": str(jev.compress_safe).lower(),
+                "X-Imprint-Jev-Ms": f"{jev.elapsed_ms:.1f}",
+            }
+
         # ── 1. Semantic Cache Lookup ──────────────────────────────────
-        cache_hit = self.semantic_cache.get(prompt)
+        # Skip when Jev says a hit is unlikely (not cacheable AND cache
+        # stage not winning) — saves the FAISS search on fresh prompts.
+        skip_cache = jev is not None and not jev.cacheable and (
+            jev.stage not in ("semantic_cache", "prefix_tree")
+        )
+        cache_hit = None if skip_cache else self.semantic_cache.get(prompt)
         if cache_hit and cache_hit.response:
             self.semantic_cache.clear_expired()  # Lazy cleanup
             return (
@@ -120,13 +149,14 @@ class ImprintServer:
                         "X-Imprint-Cache-Hit": "semantic",
                         "X-Imprint-Escalate": "false",
                         "X-Imprint-Compression-Ratio": "1.0",
+                        **jev_headers,
                     },
                 ),
                 {},
             )
 
         # ── 2. Prefix Tree Lookup ─────────────────────────────────────
-        prefix_hit = self.prefix_tree.lookup(prompt)
+        prefix_hit = None if skip_cache else self.prefix_tree.lookup(prompt)
         if prefix_hit and prefix_hit.get("response"):
             return (
                 render_response(
@@ -139,6 +169,7 @@ class ImprintServer:
                         "X-Imprint-Cache-Hit": "prefix",
                         "X-Imprint-Escalate": "false",
                         "X-Imprint-Compression-Ratio": "1.0",
+                        **jev_headers,
                     },
                 ),
                 {},
@@ -149,6 +180,13 @@ class ImprintServer:
         compressed_prompt = prompt
         needs_compression = (
             self.compressor.should_compress(prompt, self.compression_threshold)
+            or (
+                # Jev can flag sub-threshold prompts that are still safe to
+                # squeeze (high complexity + compress_safe) — and vice versa.
+                jev is not None
+                and jev.compress_safe
+                and jev.complexity > 0.6
+            )
         )
         if needs_compression:
             compressed, ratio = self.compressor.compress(
